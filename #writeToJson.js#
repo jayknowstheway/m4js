@@ -12,7 +12,7 @@ function clear(){
 }
 
 function write(){
-    anything("track1", 1, 2, 3);
+    anything(trackNumber, currentClip, paramObject);
 	var jase = JSON.stringify(UI,null,'\t');
 	var path = p;
 	var fout = new File(path,"write","TEXT");
@@ -57,7 +57,7 @@ function dump(){
 
 //fill UI with some stuff:
 function anything(){
-	var a = arrayfromargs(arguments);
+	var a = arrayfromargs(messagename,arguments);
 	var id = a[0];
 	var property = a[1];
 	var data = a.slice(2);

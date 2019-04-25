@@ -11,6 +11,7 @@ var logEnabled = 1;
 
 var trackNumber = null;
 var sessionRecordStatus = 0;
+var currentBPM = 0;
 
 // INIT FUNCTION -------------------------------------------------------------------------//
 // Set Track Number (trackid from Max or manual track number)
@@ -38,7 +39,6 @@ function play(enable) {
     liveSet.call("start_playing");
 }
 
-
 // Stop
 function stop(enable) {
     var liveSet = new LiveAPI("live_set");
@@ -54,6 +54,28 @@ function sessionRecord(enable) {
     } else {
         globalSet.set('session_record', 0);
         sessionRecordStatus = 0;
+    }
+}
+
+// Get BPM
+function getBPM(BPMButton) {
+    var liveSet = new LiveAPI("live_set");
+    currentBPM = Math.round(liveSet.get("tempo"));
+    liveSet.set('tempo', currentBPM);
+    log(currentBPM);
+    switch (BPMButton) {
+        case 0:
+            liveSet.set('tempo', currentBPM-1);
+            break;
+        case 1:
+            liveSet.set('tempo', currentBPM+1);
+            break;
+        case 2:
+            liveSet.set('tempo', currentBPM-10);
+            break;
+        case 3:
+            liveSet.set('tempo', currentBPM+10);
+            break;
     }
 }
 
