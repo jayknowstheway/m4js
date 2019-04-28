@@ -19,6 +19,7 @@ var device = new LiveAPI("live_set tracks " + trackNumber + " devices " + select
 var param = null;
 var chosenParam = null;
 var paramObject = [];
+var paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
 
 var params = null;
 var paramCount = null;
@@ -122,7 +123,6 @@ function getNumParams() {
 // store in paramObject (Array)
 function getParamValues() {
     var chosenParam = 0;
-    var paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
     //paramStr = "";
     var paramValue = null;
     for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
@@ -139,8 +139,7 @@ function getParamValues() {
 // Set Param Values based on Clip Name
 function setParamValues() {
     var chosenParam = 0;
-    var paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
-    arrayOfParamValuesLength = arrayOfParamValues.length;
+       arrayOfParamValuesLength = arrayOfParamValues.length;
     log("-deviceFunctions: setParamValues - arrayOfParamValues", arrayOfParamValues, 'arrayOfParamValuesLength', arrayOfParamValuesLength);
     for (var i = 0; i < arrayOfParamValuesLength; i++) {
         //log('i:', i, 'arrayOfParamValues', arrayOfParamValues[i]);
@@ -155,7 +154,7 @@ function setParamValues() {
     }
 }
 
-// Get Dial
+// Get Parameter value so Dial can affect it-
 function getParameter(paramNum) {
     if (params == null) {
         paramCount = new LiveAPI();

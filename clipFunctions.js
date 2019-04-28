@@ -33,7 +33,7 @@ function onTrackChange(trackNoInlet) {
     }
     log('clipFunctions- trackNumber', trackNumber, 'currentClip', currentClip);
     // init actions
-   // getHasClipCount();
+    // getHasClipCount();
     onClipChange();
 }
 
@@ -51,7 +51,7 @@ function getHasClipCount() {
     var clipSlotCount = track.getcount("clip_slots");
     var clipSlot = new LiveAPI();
     // GET HAS CLIP
-    for (var j=0; j<clipSlotCount; j++) {
+    for (var j = 0; j < clipSlotCount; j++) {
         var clip_slot_path = track.path.replace(/['"]+/g, '') + " clip_slots " + j; //'
         clipSlot.path = clip_slot_path;
         var hasClip = parseInt(clipSlot.get("has_clip"));
@@ -112,13 +112,13 @@ function fireClipButtons(clipButton) {
 
 // Fire Clip Buttons - first 20 tracks
 function fireClipButtons(clipButton) {
-	var hasClipManualNumber = 20;
+    var hasClipManualNumber = 20;
     if (trackChangeInit == 0) {
         log('XXXXXXXtrackChangeInit', trackChangeInit);
         //currentClip = Number(playingClipIndex);
-if (currentClip == -2){
-	currentClip = -1;
-	}
+        if (currentClip == -2) {
+            currentClip = -1;
+        }
         trackChangeInit = 1;
     }
     // BUTTONS
@@ -153,6 +153,8 @@ function stopClip() {
     liveSet.call("stop");
 }
 
+
+///////////////////////////////////////////////// CLIP MIDI LENGTH //////////////////////////
 // Get Clip Length
 function getClipLength() {
     var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
@@ -174,6 +176,33 @@ function setClipLength(clipButton) {
     }
     getClipLength();
     //	log("Clip Length:", clipLength);
+}
+
+
+var midiZoneArray = [0, 1, 2, 3, 4];
+var clipZoneButtonMod = 0;
+
+
+function setClipZone(clipZoneButton) {
+    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
+    if (clipZoneButton < clipZoneButtonMod) {
+        clipZoneButtonMod = clipZoneButton;
+        liveSet.set("loop_start", (clipZoneButtonMod * 16));
+        liveSet.set("loop_end", (clipZoneButtonMod * 16 + 16));
+        liveSet.set("looping", 0);
+        liveSet.set("loop_start", (clipZoneButtonMod * 16));
+        liveSet.set("loop_end", (clipZoneButtonMod * 16 + 16));
+        liveSet.set("looping", 1);
+    } else {
+        clipZoneButtonMod = clipZoneButton;
+        liveSet.set("loop_end", (clipZoneButtonMod * 16 + 16));
+        liveSet.set("loop_start", (clipZoneButtonMod * 16));
+        liveSet.set("looping", 0);
+        liveSet.set("loop_end", (clipZoneButtonMod * 16 + 16));
+        liveSet.set("loop_start", (clipZoneButtonMod * 16));
+        liveSet.set("looping", 1);
+    }
+
 }
 
 ///////////////////////////////////////////////// CLIP MIDI NOTES //////////////////////////
@@ -233,22 +262,6 @@ log("__________________________________________________");
 
 
 // CALLBACK ------------------------------------------------------------------------//
-function doubleclick(el, onsingle, ondouble) {
-    if (el.getAttribute("data-dblclick") == null) {
-        el.setAttribute("data-dblclick", 1);
-        setTimeout(function() {
-            if (el.getAttribute("data-dblclick") == 1) {
-                onsingle();
-            }
-            el.removeAttribute("data-dblclick");
-        }, 300);
-    } else {
-        el.removeAttribute("data-dblclick");
-        ondouble();
-    }
-}
-
-
 function callback() {}
 
 // NOTES --------------------------------------------------------------------------------//
