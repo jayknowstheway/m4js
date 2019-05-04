@@ -1,0 +1,260 @@
+'use strict';
+(function myMain() { // this will auto-run when script is executed
+    var scriptResults = 'TBD'
+    debugger;
+    // -------- DEBUGGER-------- //
+
+    var vEquipmentType = document.kmvar.vEquipmentType;
+    var vTarget = null;
+
+    // COMMANDS -----------------------------------------------------------------------------------
+    // Go To Page
+    goToPage('https://orchard.conserviscorp.com/PrepareAddEquipment.action#');
+
+    // Name
+    webFill(document.getElementById('name'), document.kmvar.vEquipmentName);
+
+    // Type ---- Assoc. Activities is linked to Type
+    setSelectedValue(document.getElementById('type'), document.kmvar.vEquipmentType);
+    associatedActivities();
+
+    // Standard/Actual
+    setSelectedValue(document.getElementById('standard-actual'), document.kmvar.vEquipmentStandardActual);
+
+    // FUNCTIONS ----------------------------------------
+
+    // GO TO PAGE
+    function goToPage(vWebAddress) {
+        window.location.href = vWebAddress;
+    }
+
+    //FILL WEB FIELD
+    function webFill(vElement, vWebVariable) {
+        if (vWebVariable != null) {
+            vElement.value = vWebVariable;
+        }
+    }
+
+    function fireMouseEvent(obj, evtName) {
+        if (obj.dispatchEvent) {
+            //var event = new Event(evtName);
+            var event = document.createEvent("MouseEvents");
+            event.initMouseEvent(evtName, true, true, window,
+                0, 0, 0, 0, 0, false, false, false, false, 0, null);
+            obj.dispatchEvent(event);
+        } else if (obj.fireEvent) {
+            event = document.createEventObject();
+            event.button = 1;
+            obj.fireEvent("on" + evtName, event);
+            obj.fireEvent(evtName);
+        } else {
+            obj[evtName]();
+        }
+    }
+
+    // setSelectedValue
+    function setSelectedValue(object, value) {
+        object.focus();
+        for (var i = 0; i < object.options.length; i++) {
+            if (object.options[i].text === value) {
+                object.options[i].selected = true;
+                var event = new Event('change');
+                object.dispatchEvent(event);
+                return;
+
+            }
+        }
+        // Throw exception if option `value` not found.
+        var tag = object.nodeName;
+        var str = value;
+        return str;
+    }
+
+    // SCRATCH
+
+
+    // Assoc. Activities
+    function associatedActivities() {
+
+        fireMouseEvent(document.querySelector("#basicInformation > ul > li:nth-child(4) > div > button"), "click");
+        orchardEquipmentType(vEquipmentType);
+
+        function orchardEquipmentType(vEquipmentType) {
+            switch (vEquipmentType) {
+                case "Bin":
+                case "BIN":
+                    setSelectedValue(document.getElementById('type'), "Bin");
+                    selActivity("Harvest");
+                    break;
+                case "Channel Fertigation":
+                case "CHANNEL FERTIGATION":
+                    setSelectedValue(document.getElementById('type'), "Channel Fertigation");
+                    selActivity("Irrigation");
+                    break;
+                case "Fertigation - Sprinkler":
+                case "FERTIGATION - SPRINKLER":
+                case "Fertigation-Sprinkler":
+                case "FERTIGATION-SPRINKLER":
+                case "Fertigation":
+                case "FERTIGATION":
+                    setSelectedValue(document.getElementById('type'), "Fertigation - Sprinkler");
+                    selActivity("Irrigation");
+                    break;
+                case "Harvester":
+                case "HARVESTER":
+                case "Harvest":
+                case "HARVEST":
+                    setSelectedValue(document.getElementById('type'), "Harvester");
+                    selActivity("Harvest");
+                    break;
+                case "Irrigation - Sprinkler":
+                case "Irrigation":
+                case "IRRIGATION - SPRINKLER":
+                case "Irrigation-Sprinkler"
+                case "IRRIGATION-SPRINKLER":
+                case "IRRIGATION":
+                    setSelectedValue(document.getElementById('type'), "Irrigation - Sprinkler");
+                    selActivity("Irrigation");
+                    break;
+                case "Loader":
+                case "LOADER":
+                    setSelectedValue(document.getElementById('type'), "Loader");
+                    selActivity("Harvest");
+                    selActivity("Other");
+                    break;
+                case "Manual Service":
+                case "MANUAL SERVICE":
+                    setSelectedValue(document.getElementById('type'), "Manual Service");
+                    selActivity("Select all");
+                    break;
+                case "Mower":
+                case "MOWER":
+                    setSelectedValue(document.getElementById('type'), "Mower");
+                    selActivity("Mowing");
+                    selActivity("Sanitation");
+                    break;
+                case "Other Field Equipment":
+                case "OTHER FIELD EQUIPMENT":
+                    setSelectedValue(document.getElementById('type'), "Other Field Equipment");
+                    selActivity("Select all");
+                    break;
+                case "Pruner":
+                case "PRUNER":
+                    setSelectedValue(document.getElementById('type'), "Pruner");
+                    selActivity("Pruning");
+                    selActivity("Sanitation");
+                    break;
+                case "Sanitation":
+                case "SANITATION":
+                    setSelectedValue(document.getElementById('type'), "Sanitation");
+                    selActivity("Sanitation");
+                    selActivity("Other");
+                    break;
+                case "Shaker":
+                case "SHAKER":
+                    setSelectedValue(document.getElementById('type'), "Shaker");
+                    selActivity("Harvest");
+                    selActivity("Other");
+                    break;
+                case "Sprayer-Aerial":
+                case "Sprayer - Aerial":
+                    setSelectedValue(document.getElementById('type'), "Sprayer-Aerial");
+                    selActivity("Spraying");
+                    break;
+                case "Sprayer-Field":
+                case "Sprayer - Field":
+                    setSelectedValue(document.getElementById('type'), "Sprayer-Field");
+                    selActivity("Spraying");
+                    break;
+                case "Spreader":
+                case "SPREADER":
+                    setSelectedValue(document.getElementById('type'), "Spreader");
+                    selActivity("Spreading");
+                    break;
+                case "Sweeper":
+                case "SWEEPER":
+                    setSelectedValue(document.getElementById('type'), "Sweeper");
+                    selActivity("Harvest");
+                    selActivity("Sanitation");
+                    break;
+                case "Tank":
+                case "TANK":
+                    setSelectedValue(document.getElementById('type'), "Tank");
+                    selActivity("Select all");
+                    break;
+                case "Tender":
+                case "TENDER":
+                    setSelectedValue(document.getElementById('type'), "Tender");
+                    selActivity("Select all");
+                    break;
+                case "Tiller":
+                case "TILLER":
+                    setSelectedValue(document.getElementById('type'), "Tiller");
+                    selActivity("Tillage");
+                    selActivity("Sanitation");
+                    selActivity("Other");
+                    break;
+                case "Tractor":
+                case "TRACTOR":
+                    setSelectedValue(document.getElementById('type'), "Tractor");
+                    selActivity("Select all");
+                    break;
+                case "Trailer":
+                case "TRAILER":
+                    setSelectedValue(document.getElementById('type'), "Trailer");
+                    selActivity("Select all");
+                    break;
+                case "Truck":
+                case "TRUCK":
+                    setSelectedValue(document.getElementById('type'), "Truck");
+                    selActivity("Select all");
+                    break;
+            }
+        }
+
+        function selActivity(vActivity) {
+            switch (vActivity) {
+                case "Select all":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li.multiselect-item.multiselect-all > a > label");
+                    break;
+                case "Harvest":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(4) > a > label");
+                    break;
+                case "Irrigation":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(5) > a > label");
+                    break;
+                case "Mowing":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(6) > a > label");;
+                    break;
+                case "Other":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(7) > a > label");
+                    break;
+                case "Pruning":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(8) > a > label");
+                    break;
+                case "Sanitation":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(9) > a > label");
+                    break;
+                case "Spraying":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(10) > a > label");
+                    break;
+                case "Spreading":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(11) > a > label");
+                    break;
+                case "Tillage":
+                    vTarget = document.querySelector("#basicInformation > ul > li:nth-child(4) > div > ul > li:nth-child(12) > a > label");
+                    break;
+
+            }
+
+            fireMouseEvent(vTarget, "click");
+            fireMouseEvent(document.querySelector("#basicInformation > ul > li:nth-child(4) > div > button"), "click");
+        }
+
+    }
+
+
+
+    // -------- DEBUGGER-------- //
+    //return scriptResults;
+})(); // autorun
