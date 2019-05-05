@@ -437,6 +437,8 @@ function writeParamValues() {
     read();
     anything(trackNumber, currentClip, arrayOfParamValues);
     var jase = JSON.stringify(UI);
+    outlet(0, jase);
+    /*
     var path = p;
     var fout = new File(path, "readwrite", "JSON");
     if (fout.isopen) {
@@ -446,6 +448,7 @@ function writeParamValues() {
     } else {
         post("\ncould not create json file: " + path);
     }
+*/
 }
 
 var tempWord = "TEMP";
@@ -497,7 +500,7 @@ function read() {
         post("Error\n");
     }
     // UI = JSON.parse(memstr);
-    UI = eval("(" + memstr + ")"); //much less secure, but could work
+//    UI = eval("(" + memstr + ")"); //much less secure, but could work
 }
 
 var readTempInit = 0;
