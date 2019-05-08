@@ -19,12 +19,12 @@ maxApi.addHandler('appendParamData', (inletObject) => {
 
 
 // write
-function write(){
-if(paramObject){
-    fs.writeFile("writeToJson.json", JSON.stringify(newObj), function(err) {
-        if (err) throw err;
-    });
-}
+function write() {
+    if (paramObject) {
+        fs.writeFile("writeToJson.json", JSON.stringify(newObj), function(err) {
+            if (err) throw err;
+        });
+    }
 }
 
 // FUNCTION TO GET INLET PARAM OBJECT
