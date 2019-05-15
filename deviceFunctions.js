@@ -1,7 +1,7 @@
 // deviceFunctions.js -- now includes JSON Parse
 autowatch = 1;
 inlets = 1;
-outlets = 1;
+outlets = 2;
 
 //const maxApi = require("max-api");
 
@@ -39,7 +39,13 @@ var arrayOfParamValuesLength = arrayOfParamValues.length;
 var bank = 0;
 var bankParam = 0;
 
+var readTempInit = 0;
+
+var clipMidiNotes = null;
+var arrayOfMidiValues;
+
 // INIT FUNCTIONS ------------------------------------------------------------------------//
+
 function onTrackChange(trackNoInlet) {
     trackChangeInit = 0;
     log("\n\n\n\n--------deviceFunctions: onTrackChange - Inlet=trackNoInlet", trackNoInlet);
@@ -81,7 +87,7 @@ function onParamChange(chosenParam) {
     param = new LiveAPI("live_set tracks " + trackNumber + " devices " + selectedDevice + " parameters " + chosenParam);
 }
 
-// COMMANDS ----------------------------------------------------------------------//
+// COMMANDS -----------------------------------------------------------------------------//
 
 function writeParams() {
     getParamValues2();
@@ -93,9 +99,18 @@ function writeTempObject() {
     writeTemp();
 }
 
+function writeMidi() {
+    getMidiValues();
+    writeMidiValues();
+}
+
+function setClipName() {
+    setClipNameToParamValues();
+}
+
 
 // GLOBAL FUNCTIONS ----------------------------------------------------------------------//
-// getPlayingSlot
+
 function getPlayingSlot() {
     var track = new LiveAPI("live_set tracks " + trackNumber);
     var playingSlotIndex = track.get('playing_slot_index');
@@ -109,7 +124,6 @@ function getPlayingSlot() {
     getClipName();
 }
 
-// Get Clip Name
 function getClipName() {
     var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
     log("-deviceFunctions: getClipName - liveSet.path:", liveSet.path);
@@ -118,42 +132,34 @@ function getClipName() {
         log('-deviceFunctions: getClipName - clipName:', clipName);
         arrayOfParamValues = clipName.toString().split(" ");
         log('-deviceFunctions: getClipName - arrayOfParamValues:', arrayOfParamValues, 'arrayOfParamValues.length:', arrayOfParamValues.length);
-        //    log("GET CLIP NAME - clipname:", clipName);
     }
 }
 
-// GET PARAM VALUES ---------------------------------//
-// Get Num Parameters
-function getNumParams() {
-    numOfParams = device.getcount('parameters');
-    log("-deviceFunctions: getNumParams - numOfParams:", numOfParams);
-    getParamValues();
-}
+// COMMAND FUNCTIONS ---------------------------------------------------------------------//
 
-// Get Param Values
-// store in paramObject (Array)
-function getParamValues() {
+// PARAMS //
+
+function setClipNameToParamValues() {
+    numOfParams = device.getcount('parameters');
+    // Get Param Values
     var chosenParam = 0;
-    //paramStr = "";
     var paramValue = null;
     for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
         paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
         paramValue = paramPath.get('value');
-        //paramStr += paramValue + " ";
         paramObject[chosenParam] = paramValue;
     }
-    log("-deviceFunctions: getParamValues - paramObject:", paramObject);
-    //log("ParamValues(paramStr):", paramStr);
+    // Set Clip Name
+    var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
+    clipName = liveSet.set('name', paramObject);
 }
 
-//THIS FUNCTION CHUNKS MULTIPLE ARRAYS.. MAY NEED TO FIX IT
 function getParamValues2() {
-
+// creates arrayOfParamValues in object with multiple arrays
     var paramChunkArray = new Array();
     var chosenParam = 0;
     var paramValue = null;
     numOfParams = device.getcount('parameters');
-
     // create param values object, ex: length = 65
     for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
         paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
@@ -161,13 +167,10 @@ function getParamValues2() {
         paramObject[chosenParam] = paramValue;
     }
     log("-deviceFunctions: getParamValues2 - paramObject:", paramObject.length, typeof(paramObject), paramObject);
-
     // split param object into chunks of 8, ignoring first number
     // note: this will create write function [[ [1],[2],[3] ]]
     arrayOfParamValues = (chunk(paramObject, 8));
-
     // create arrays for each group of 8, and remove string
-    // note: this will create write function [[ [1,2,3] ]]
     for (var i = 0; i < arrayOfParamValues.length; i++) {
         paramObject[i] = '[' + arrayOfParamValues[i] + ']';
         log('paramObject', i, paramObject[i]);
@@ -177,162 +180,10 @@ function getParamValues2() {
     //    log('paramChunkObject',paramChunkArray);
     arrayOfParamValues = paramChunkArray;
     log("arrayOfParamValues length", arrayOfParamValues.length, 'arrayOfParamValues', arrayOfParamValues);
-
-    //  write2();
 }
 
-
-//fill UI with UI[0][1][2]:
-function anything() {
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    //var data = a[2];
-    var data = a.slice(2);
-    // the .slice method creates a new unnecessary array.
-    post("\nanything", id, ",", property, ",", data);
-    if (UI == null) {
-        UI = new Object();
-    }
-    if (UI[id] == null) {
-        log('anything: UI[id] was null ---------------');
-        UI[id] = new Object();
-    }
-    UI[id][property] = data;
-    log('-deviceFunctions: anything - data', data);
-}
-
-//fill UI with UI[0][1][2][3]:
-function anything2() {
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    var subProperty = a[2];
-    var data = a[3];
-    post("\nanything2", id, ",", property, ",", subProperty, ",", data);
-    if (UI[id] == null) {
-        UI[id] = new Object();
-    }
-    UI[id][property][subProperty] = data;
-}
-
-
-function chunk(arr, len) {
-    var chunks = [],
-        i = 1,
-        n = arr.length;
-    while (i < n) {
-        chunks.push(arr.slice(i, i += len));
-    }
-    return chunks;
-}
-
-function swapElement(array, indexA, indexB) {
-    var tmp = array[indexA];
-    array[indexA] = array[indexB];
-    array[indexB] = tmp;
-}
-
-function switchParamsArray(crud) {
-    read("PARAMS");
-    log('TEST FUNCTION');
-    switch (crud) {
-        case 0: //"Create"
-            log('switchParamsArray CREATE!');
-            getParamValues2();
-            pushToArray(trackNumber, currentClip, arrayOfParamValues);
-            break;
-        case 1: // "ReadNext"
-            log('switchParamsArray READNEXT!');
-        (UI[trackNumber][currentClip]).push(UI[trackNumber][currentClip].shift());
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            setParamValues2();
-            break;
-        case 2: // "ReadPrevious"
-            log('switchParamsArray READPREVIOUS!');
-        (UI[trackNumber][currentClip]).unshift(UI[trackNumber][currentClip].pop());
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            setParamValues2();
-            break;
-        case 3: // "Update"
-            log('switchParamsArray UPDATE!');
-            //            getParamValues2();
-            //            anything(trackNumber, currentClip, arrayOfParamValues);
-            break;
-        case 4: // "Delete"
-            log('switchParamsArray DELETE!');
-            UI[trackNumber][currentClip].splice(0, 1);
-            arrayOfParamValues = UI[trackNumber][currentClip];
-            setParamValues2();
-            break;
-
-    }
-    var jase = JSON.stringify(UI);
-    log('UI from writeParamValues', UI);
-    outlet(0, jase);
-    log('UI[trackNumber][currentClip].length', (UI[trackNumber][currentClip].length));
-}
-
-function test() {
-    read();
-    log('TEST FUNCTION');
-    randomizeFirstParams();
-    /*
-    // replaces an array entry
-    read();
-    //    getParamValues2();
-    arrayOfParamValues = [1,2,3,4,5,6,7,8];
-    // the third item is the selected device, BYOTCH
-    anything2(trackNumber, "TEMP", "1", arrayOfParamValues);
-    var jase = JSON.stringify(UI, null, '\t');
-    var path = p;
-    var fout = new File(path, "readwrite", "JSON");
-    if (fout.isopen) {
-        fout.writeline(jase);
-        fout.close();
-        post("\nJSON Write", path);
-    } else {
-        post("\ncould not create json file: " + path);
-    }
-    */
-}
-
-    function randomizeFirstParams(){
-    for (var j = 0; j < 8; j++){
-	paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + Number((j*8)+1));
-	var randomVal = (Math.floor((Math.random() * 127) + 0));
-	paramPath.set('value',randomVal);
-	log((j*8)+1, Math.floor(Math.random() * 127) + 0);
-    }
-		paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + 13);
-	paramPath.set('value',(Math.floor((Math.random() * 127) + 0)));
-    }
-
-
-function pushToArray() {
-    // push additional anything array
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    var data = a[2];
-    //var data = a.slice(2);
-    // the .slice method creates a new unnecessary array.
-    post("\nanything", id, ",", property, ",", data);
-    if (UI == null) {
-        UI = new Object();
-    }
-    if (UI[id] == null) {
-        log('anything: UI[id] was null ---------------');
-        UI[id] = new Object();
-    }
-
-    UI[id][property][UI[id][property].length] = data;
-}
-
-// SET PARAMS ---------------------------------//
-// Set Param Values based on Clip Name
 function setParamValues() {
+// Set Param Values based on Clip Name
     var chosenParam = 0;
     arrayOfParamValuesLength = arrayOfParamValues.length;
     log("-deviceFunctions: setParamValues - arrayOfParamValues", arrayOfParamValues, 'arrayOfParamValuesLength', arrayOfParamValuesLength);
@@ -349,9 +200,8 @@ function setParamValues() {
     }
 }
 
-
-// Set Param Values based on JSON
 function setParamValues2() {
+// Set Param Values based on JSON
     var chosenParam = 0;
     arrayOfParamValuesLength = arrayOfParamValues.length;
     for (var i = 0; i < arrayOfParamValuesLength; i++) {
@@ -368,15 +218,10 @@ function setParamValues2() {
     }
 }
 
+// DIALS AND BANKS //
 
-
-// Math.floor((Math.random() * 127) + 0);
-
-
-// DIALS AND BANKS ---------------------------------//
-
-// Get Parameter value so Dial can affect it-
 function getParameter(paramNum) {
+// Get Parameter value so Dial can affect it-
     if (params == null) {
         paramCount = new LiveAPI();
         params = new Array(paramsTotal);
@@ -393,7 +238,6 @@ function getParameter(paramNum) {
     return p;
 }
 
-// Set Dial
 function setDial(dial, val) {
     if (trackChangeInit == 0) {
         bank = 0;
@@ -453,27 +297,247 @@ function getSelectedBank(midiNote) {
         log('Selected Bank', bank / 8);
     }
 }
-// SET CLIP NAME ---------------------------------//
-// Set Clip Name
-function setClipName() {
-    //get Param Values first!!
-    getNumParams();
-    log("-deviceFunctions: setClipName - check currentClip:", currentClip);
-    var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
-    clipName = liveSet.set('name', paramObject);
-    log("-deviceFunctions: setClipName - clipName:", clipName, "Clip Name changed to paramObject:", paramObject);
+
+
+// CLIP MIDI NOTES //
+
+function getMidiValues() {
+    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
+    liveSet.call("select_all_notes");
+    clipMidiNotes = liveSet.call("get_selected_notes");
+    log("Clip Midi Notes:", clipMidiNotes);
+    arrayOfMidiValues = '[' + clipMidiNotes + ']';
 }
+
+function clearMidiNotes() {
+    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
+    liveSet.call("select_all_notes");
+    clipMidiNotes = liveSet.call("get_selected_notes");
+    log("Clip Midi Notes:", clipMidiNotes);
+    liveSet.call("replace_selected_notes");
+    liveSet.call("notes", 0);
+    liveSet.call("done");
+}
+
+// JSON RELATED //
+
+function anything() {
+// fill UI with UI[0][1][2]:
+    var a = arrayfromargs(arguments);
+    var id = a[0];
+    var property = a[1];
+    //var data = a[2];
+    var data = a.slice(2);
+    post("\nanything", id, ",", property, ",", data);
+    if (UI == null) {
+        UI = new Object();
+    }
+    if (UI[id] == null) {
+        log('anything: UI[id] was null ---------------');
+        UI[id] = new Object();
+    }
+    if(UI[id][property]){
+ data = a[2];
+	UI[id][property][0] = data;
+    } else {
+	UI[id][property] = data;
+    }
+
+    log('-deviceFunctions: anything - data', data);
+}
+
+function anything2() {
+// fill UI with UI[0][1][2][3]:
+    var a = arrayfromargs(arguments);
+    var id = a[0];
+    var property = a[1];
+    var subProperty = a[2];
+    var data = a[3];
+    post("\nanything2", id, ",", property, ",", subProperty, ",", data);
+    if (UI[id] == null) {
+        UI[id] = new Object();
+    }
+    UI[id][property][subProperty] = data;
+}
+
+function chunk(arr, len) {
+// creates arrays in groups of 8
+    var chunks = [],
+        i = 1,
+        n = arr.length;
+    while (i < n) {
+        chunks.push(arr.slice(i, i += len));
+    }
+    return chunks;
+}
+
+function switchParamsArray(crud) {
+    read("PARAMS");
+    switch (crud) {
+        case 0: //"Create"
+        log('switchParamsArray CREATE!');
+		if(!UI[trackNumber][currentClip]){
+	    writeParams();
+	} else {
+            getParamValues2();
+            pushToArray(trackNumber, currentClip, arrayOfParamValues);
+	}
+            break;
+        case 1: // "ReadNext"
+        log('switchParamsArray READNEXT!');
+	if(!UI[trackNumber][currentClip]){
+	    	    writeParams();
+	} else {
+            (UI[trackNumber][currentClip]).push(UI[trackNumber][currentClip].shift());
+            arrayOfParamValues = UI[trackNumber][currentClip][0];
+            arrayOfParamValues = UI[trackNumber][currentClip][0];
+            setParamValues2();
+	}
+            break;
+        case 2: // "ReadPrevious"
+            log('switchParamsArray READPREVIOUS!');
+	if(!UI[trackNumber][currentClip]){
+	    	    writeParams();
+	} else {
+        (UI[trackNumber][currentClip]).unshift(UI[trackNumber][currentClip].pop());
+            arrayOfParamValues = UI[trackNumber][currentClip][0];
+            setParamValues2();
+	}
+            break;
+        case 3: // "Update"
+            log('switchParamsArray UPDATE!');
+            //            getParamValues2();
+            //            anything(trackNumber, currentClip, arrayOfParamValues);
+            break;
+        case 4: // "Delete"
+        log('switchParamsArray DELETE!');
+		if(UI[trackNumber][currentClip]){
+            UI[trackNumber][currentClip].splice(0, 1);
+            arrayOfParamValues = UI[trackNumber][currentClip];
+		    setParamValues2();
+		}
+            break;
+
+    }
+    //write function
+    var jase = JSON.stringify(UI);
+    log('UI from writeParamValues', UI);
+    outlet(0, jase);
+    //log('UI[trackNumber][currentClip].length', (UI[trackNumber][currentClip].length));
+}
+
+function test() {
+    read();
+    log('TEST FUNCTION');
+    randomizeParams();
+    /*
+    // replaces an array entry
+    read();
+    //    getParamValues2();
+    arrayOfParamValues = [1,2,3,4,5,6,7,8];
+    // the third item is the selected device, BYOTCH
+    anything2(trackNumber, "TEMP", "1", arrayOfParamValues);
+    var jase = JSON.stringify(UI, null, '\t');
+    var path = p;
+    var fout = new File(path, "readwrite", "JSON");
+    if (fout.isopen) {
+        fout.writeline(jase);
+        fout.close();
+        post("\nJSON Write", path);
+    } else {
+        post("\ncould not create json file: " + path);
+    }
+    */
+}
+
+function randomizeParams() {
+    for (var j = 0; j < 8; j++) {
+        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + Number((j * 8) + 1));
+        var randomVal = (Math.floor((Math.random() * 127) + 0));
+        paramPath.set('value', randomVal);
+        log((j * 8) + 1, Math.floor(Math.random() * 127) + 0);
+    }
+    paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + 13);
+    paramPath.set('value', (Math.floor((Math.random() * 127) + 0)));
+}
+
 
 // JSON CODE -----------------------------------------------------------------------------//
 var memstr;
 var mem = new Object();
 var UI = new Object();
-var p = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON USER LIBRARY/PATCHES/M4L PATCHES/CUSTOM/JS/writeToJson.json";
+var p = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON USER LIBRARY/PATCHES/M4L PATCHES/CUSTOM/JS/params.json";
+var midiFile = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON USER LIBRARY/PATCHES/M4L PATCHES/CUSTOM/JS/midi.json";
 
 function clear() {
     UI = new Object();
     post("\ncleared");
     //read();
+}
+
+function read(objKey) {
+    memstr = "";
+    data = "";
+    maxchars = 8000;
+    path = p;
+    var f = new File(path, "read");
+    f.open();
+    if (f.isopen) {
+        while (f.position < f.eof) {
+            memstr += f.readstring(maxchars);
+        }
+        f.close();
+    } else {
+        post("Error\n");
+    }
+    var UIObject = JSON.parse(memstr);
+    if (objKey == null) {
+        objKey = "PARAMS";
+    }
+    UI = UIObject[objKey];
+    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
+}
+
+function readMidi() {
+    memstr = "";
+    data = "";
+    maxchars = 8000;
+    path = midiFile;
+    var f = new File(path, "read");
+    f.open();
+    if (f.isopen) {
+        while (f.position < f.eof) {
+            memstr += f.readstring(maxchars);
+        }
+        f.close();
+    } else {
+        post("Error\n");
+    }
+    var UIObject = JSON.parse(memstr);
+    UI = UIObject["MIDI"];
+    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
+}
+
+function readTemp() {
+    // read();
+    if ((UI[trackNumber][currentClip]) == undefined) {
+        writeParams();
+    }
+
+    // log('readTemp: UI["0"]["TEMP"][0][0]', UI["0"]["TEMP"][0][2]);
+    if (readTempInit != 1) {
+        arrayOfParamValues = (UI['TEMP-' + trackNumber]["GENERIC"]);
+        post("\nJSON Read", 'arrayOfParamValues', arrayOfParamValues);
+        setParamValues2();
+        readTempInit = 1;
+    } else {
+        //   getClipName();
+        //	arrayOfParamValues = UI["0"][currentClip];
+        arrayOfParamValues = UI[trackNumber][currentClip];
+        post('\nreadTemp ELSE', arrayOfParamValues);
+        setParamValues2();
+        readTempInit = 0;
+    }
 }
 
 function write() {
@@ -502,6 +566,16 @@ function writeParamValues() {
     outlet(0, jase);
 }
 
+
+function writeMidiValues() {
+    //clear();
+    readMidi("MIDI");
+    anything(trackNumber, currentClip, arrayOfMidiValues);
+    var jase = JSON.stringify(UI);
+    log('UI from writeParamValues', UI);
+    outlet(1, jase);
+}
+
 var tempWord = "TEMP";
 
 function writeTemp() {
@@ -513,57 +587,24 @@ function writeTemp() {
     outlet(0, jase);
 }
 
-function read(objKey) {
-    memstr = "";
-    data = "";
-    maxchars = 8000;
-    path = p;
-    var f = new File(path, "read");
-    f.open();
-    if (f.isopen) {
-        while (f.position < f.eof) {
-            memstr += f.readstring(maxchars);
-        }
-        f.close();
-    } else {
-        post("Error\n");
+function pushToArray() {
+    // push additional anything array
+    var a = arrayfromargs(arguments);
+    var id = a[0];
+    var property = a[1];
+    var data = a[2];
+    //var data = a.slice(2);
+    // the .slice method creates a new unnecessary array.
+    post("\nanything", id, ",", property, ",", data);
+    if (UI == null) {
+        UI = new Object();
     }
-    var UIObject = JSON.parse(memstr);
-    if (objKey == null) {
-        objKey = "PARAMS";
-    }
-    UI = UIObject[objKey];
-    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
-}
-
-var readTempInit = 0;
-
-function readTemp() {
-    // read();
-    if ((UI[trackNumber][currentClip]) == undefined) {
-        writeParams();
+    if (UI[id] == null) {
+        log('anything: UI[id] was null ---------------');
+        UI[id] = new Object();
     }
 
-    // log('readTemp: UI["0"]["TEMP"][0][0]', UI["0"]["TEMP"][0][2]);
-    if (readTempInit != 1) {
-        arrayOfParamValues = (UI['TEMP-' + trackNumber]["GENERIC"]);
-        post("\nJSON Read", 'arrayOfParamValues', arrayOfParamValues);
-        setParamValues2();
-        readTempInit = 1;
-    } else {
-        //   getClipName();
-        //	arrayOfParamValues = UI["0"][currentClip];
-        arrayOfParamValues = UI[trackNumber][currentClip];
-        post('\nreadTemp ELSE', arrayOfParamValues);
-        setParamValues2();
-        readTempInit = 0;
-    }
-}
-
-
-//for testing - shows all the current objects in Max window
-function dump() {
-    log('-deviceFunctions: dump - UI[trackNumber][clipNumber]', UI[trackNumber][currentClip]);
+    UI[id][property][UI[id][property].length] = data;
 }
 
 function setResetParamValues() {
@@ -571,11 +612,52 @@ function setResetParamValues() {
     anything(trackNumber, currentClip);
     log('UI[trackNumber][currentClip]', trackNumber, currentClip, '//', UI[trackNumber][currentClip]);
     write();
-    //	setParamValues();
 }
-// NOTES --------------------------------------------------------------------------------//
+
+// NOTES ---------------------------------------------------------------------------------//
+/*
+
+1. How to get from params to json:
+   (calls the writeParams function)
+          a) getParamValues2
+             - gets all parameter values
+	     - creates a single array of all of them
+	     - Chunk function splits them into arrays of arrays of 8
+	     - Stringified
+	     - result = arrayOfParamValues
+          b) writeParamValues
+	     - calls Read("PARAMS") from p = path-to-params.json to load UI var with json data from writeToJson.json
+	         objKey = "PARAMS";
+	         (UI = UIObject[objKey];)
+	     - calls anything(trackNumber, currentClip, arrayOfParamValues)
+	         (this creates UI[id][property][0] = data.
+	     - UI is stringified (including new info), and is sent to Node.
+	  c) Node takes object and writes to file.!
+
+2. How to get from midi notes to json:
+    (calls the writeMidi function) CHECK
+          a) getMidiNotes CHECK
+	      - gets midi notes CHECK
+	      - creates single array of all midi notes CHECK
+	      - Chunk function based on position??
+	      - (Stringified)
+	      - result = arrayOfMidiNotes CHECK
+	  b) writeMidiValues CHECK
+	      - calls Read("MIDI") from midiFile = path-to-midi.json to load UI(or other) var with json data from writeToJson.json CHECK
+	      - calls anything(trackNumber, currentClip, arrayOfMidiValues) CHECK
+	          (this creates UI[id][property][0] = data.
+	      - UI is stringified and sent to Node. CHECK
+	  c) Node takes object and writes to file. CHECK
+	      
+
+
+
+
+*/
+
 
 // LOGGING -------------------------------------------------------------------------------//
+
 function log() {
     if (logEnabled == 1) {
         for (var i = 0, len = arguments.length; i < len; i++) {
@@ -601,24 +683,21 @@ console = {
 log("__________________________________________________");
 
 
-// CALLBACKS ------------------------------------------------------------------------//
+// CALLBACKS -----------------------------------------------------------------------------//
+
 function callback() {}
 
 // JSON PARSER ---------------------------------------------------------------------------//
-
 //  json2.js
 //  2017-06-12
 //  Public Domain.
 //  NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-
 //  USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
 //  NOT CONTROL.
-
 //  This file creates a global JSON object containing two methods: stringify
 //  and parse. This file provides the ES5 JSON capability to ES3 systems.
 //  If a project might run on IE8 or earlier, then this file should be included.
 //  This file does nothing on ES5 systems.
-
 //      JSON.stringify(value, replacer, space)
 //          value       any JavaScript value, usually an object or array.
 //          replacer    an optional parameter that determines how object
@@ -638,9 +717,7 @@ function callback() {}
 //          or undefined if nothing should be serialized. The toJSON method
 //          will be passed the key associated with the value, and this will be
 //          bound to the value.
-
 //          For example, this would serialize Dates as ISO strings.
-
 //              Date.prototype.toJSON = function (key) {
 //                  function f(n) {
 //                      // Format integers to have at least two digits.
@@ -655,63 +732,48 @@ function callback() {}
 //                       f(this.getUTCMinutes())   + ":" +
 //                       f(this.getUTCSeconds())   + "Z";
 //              };
-
 //          You can provide an optional replacer method. It will be passed the
 //          key and value of each member, with this bound to the containing
 //          object. The value that is returned from your method will be
 //          serialized. If your method returns undefined, then the member will
 //          be excluded from the serialization.
-
 //          If the replacer parameter is an array of strings, then it will be
 //          used to select the members to be serialized. It filters the results
 //          such that only members with keys listed in the replacer array are
 //          stringified.
-
 //          Values that do not have JSON representations, such as undefined or
 //          functions, will not be serialized. Such values in objects will be
 //          dropped; in arrays they will be replaced with null. You can use
 //          a replacer function to replace those with JSON values.
-
 //          JSON.stringify(undefined) returns undefined.
-
 //          The optional space parameter produces a stringification of the
 //          value that is filled with line breaks and indentation to make it
 //          easier to read.
-
 //          If the space parameter is a non-empty string, then that string will
 //          be used for indentation. If the space parameter is a number, then
 //          the indentation will be that many spaces.
-
 //          Example:
-
 //          text = JSON.stringify(["e", {pluribus: "unum"}]);
 //          // text is '["e",{"pluribus":"unum"}]'
-
 //          text = JSON.stringify(["e", {pluribus: "unum"}], null, "\t");
 //          // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
-
 //          text = JSON.stringify([new Date()], function (key, value) {
 //              return this[key] instanceof Date
 //                  ? "Date(" + this[key] + ")"
 //                  : value;
 //          });
 //          // text is '["Date(---current time---)"]'
-
 //      JSON.parse(text, reviver)
 //          This method parses a JSON text to produce an object or array.
 //          It can throw a SyntaxError exception.
-
 //          The optional reviver parameter is a function that can filter and
 //          transform the results. It receives each of the keys and values,
 //          and its return value is used instead of the original value.
 //          If it returns what it received, then the structure is not modified.
 //          If it returns undefined then the member is deleted.
-
 //          Example:
-
 //          // Parse the text. Values that look like ISO date strings will
 //          // be converted to Date objects.
-
 //          myData = JSON.parse(text, function (key, value) {
 //              var a;
 //              if (typeof value === "string") {
@@ -725,7 +787,6 @@ function callback() {}
 //                  return value;
 //              }
 //          });
-
 //          myData = JSON.parse(
 //              "[\"Date(09/09/2001)\"]",
 //              function (key, value) {
@@ -743,22 +804,17 @@ function callback() {}
 //                  return value;
 //              }
 //          );
-
 //  This is a reference implementation. You are free to copy, modify, or
 //  redistribute.
-
 /*jslint
     eval, for, this
 */
-
 /*property
     JSON, apply, call, charCodeAt, getUTCDate, getUTCFullYear, getUTCHours,
     getUTCMinutes, getUTCMonth, getUTCSeconds, hasOwnProperty, join,
     lastIndex, length, parse, prototype, push, replace, slice, stringify,
     test, toJSON, toString, valueOf
 */
-
-
 // Create a JSON object only if one does not already exist. We create the
 // methods in a closure to avoid creating global variables.
 

@@ -8,9 +8,9 @@ autowatch = 1;
 inlets = 1;
 outlets=3;
 // GLOBAL VARIABLES ----------------------------------------------------------------------//
-var logEnabled = 0;
+var logEnabled = 1;
 
-var track = null;
+var track = new LiveAPI("live_set tracks 0");
 var trackChangeInit = 0;
 var trackNumber = null;
 var trackId = null;
@@ -25,7 +25,11 @@ var storeClipDial = null;
 function init() {
     // set default Quant
     recordQuant(4);
+        track.set ('solo', 0);
+log('init function');
 }
+
+init();
 
 // On Track Change
 function onTrackChange(trackNoInlet) {
@@ -41,16 +45,21 @@ function onTrackChange(trackNoInlet) {
 
 // GLOBAL FUNCTIONS ----------------------------------------------------------------------//
 // Mute
-function mute(enable) {
+function mute() {
     if (track)
-        track.set ('mute', enable);
+        track.set ('mute', 1);
 }
 
 // Solo
-function solo(enable) {
-    if (track)
-        track.set ('solo', enable);
+function solo() {
+    if (track) {
+	if (track.get('solo') == 0){
+		 track.set ('solo', 1);
+		} else {
+        track.set ('solo', 0);
 	log("Soloed Track:", track);
+	}
+	}
 }
 
 // Arm

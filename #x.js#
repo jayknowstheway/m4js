@@ -1,0 +1,80 @@
+function setClipNameToParamValues() {
+    numOfParams = device.getcount('parameters');
+    // Get Param Values
+    var chosenParam = 0;
+    var paramValue = null;
+    for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
+        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
+        paramValue = paramPath.get('value');
+        paramObject[chosenParam] = paramValue;
+    }
+    // Set Clip Name
+    var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
+    clipName = liveSet.set('name', paramObject);
+}
+
+function getParamValues2() {
+// creates arrayOfParamValues in object with multiple arrays
+    var paramChunkArray = new Array();
+    var chosenParam = 0;
+    var paramValue = null;
+    numOfParams = device.getcount('parameters');
+    // create param values object, ex: length = 65
+    for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
+        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
+        paramValue = paramPath.get('value');
+        paramObject[chosenParam] = paramValue;
+    }
+    log("-deviceFunctions: getParamValues2 - paramObject:", paramObject.length, typeof(paramObject), paramObject);
+    // split param object into chunks of 8, ignoring first number
+    // note: this will create write function [[ [1],[2],[3] ]]
+    arrayOfParamValues = (chunk(paramObject, 8));
+    // create arrays for each group of 8, and remove string
+    for (var i = 0; i < arrayOfParamValues.length; i++) {
+        paramObject[i] = '[' + arrayOfParamValues[i] + ']';
+        log('paramObject', i, paramObject[i]);
+        // In this code, JSON.parse makes them arrays and not strings.
+        paramChunkArray.push(JSON.parse(paramObject[i]));
+    }
+    //    log('paramChunkObject',paramChunkArray);
+    arrayOfParamValues = paramChunkArray;
+    log("arrayOfParamValues length", arrayOfParamValues.length, 'arrayOfParamValues', arrayOfParamValues);
+}
+
+function setParamValues() {
+// Set Param Values based on Clip Name
+    var chosenParam = 0;
+    arrayOfParamValuesLength = arrayOfParamValues.length;
+    log("-deviceFunctions: setParamValues - arrayOfParamValues", arrayOfParamValues, 'arrayOfParamValuesLength', arrayOfParamValuesLength);
+    for (var i = 0; i < arrayOfParamValuesLength; i++) {
+        //log('i:', i, 'arrayOfParamValues', arrayOfParamValues[i]);
+        if (arrayOfParamValues[i] != null && arrayOfParamValues[i] != "" && clipName != null) {
+            paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + i);
+            paramPath.set('value', arrayOfParamValues[i]);
+            //log("PARAM CHANGE", "ParameterNo:", i, "ParameterValue", arrayOfParamValues[i]);
+        } else {
+            log('setParamValues -- SOMETHING IS EQUAL TO NULL');
+            log('setParamValues -- arrayOfParamValues[i]', arrayOfParamValues[i], 'arrayOfParamValues', arrayOfParamValues, 'clipName', clipName);
+        }
+    }
+}
+
+function setParamValues2() {
+// Set Param Values based on JSON
+    var chosenParam = 0;
+    arrayOfParamValuesLength = arrayOfParamValues.length;
+    for (var i = 0; i < arrayOfParamValuesLength; i++) {
+        if (arrayOfParamValues[i] != null && arrayOfParamValues[i] != "" && clipName != null) {
+            for (var j = 0; j < arrayOfParamValues[i].length; j++) {
+                paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + (j + 1 + i * 8));
+                paramPath.set('value', arrayOfParamValues[i][j]);
+                log("PARAM CHANGE", "ParameterNo:", i, "ParameterValue", arrayOfParamValues[i]);
+            }
+        } else {
+            log('setParamValues -- SOMETHING IS EQUAL TO NULL');
+            log('setParamValues -- arrayOfParamValues[i]', arrayOfParamValues[i], 'arrayOfParamValues', arrayOfParamValues, 'clipName', clipName);
+        }
+    }
+}
+
+// DIALS AND BANKS //

@@ -9,27 +9,40 @@ var styleValue = 5;
 var dynamicParamName = "PARAMS";
 var paramObject;
 
-// FUNCTION TO GET INLET PARAM OBJECT
-maxApi.addHandler('appendParamData', (inletObject) => {
+// Write Param Data
+maxApi.addHandler('writeParamData', (inletObject) => {
     paramObject = JSON.parse(inletObject); // parse inletObject
     newObj.style = styleValue; // create test object
     newObj[dynamicParamName] = paramObject; //append inletObject
-    write();
+        if (paramObject) {
+        fs.writeFile("params.json", JSON.stringify(newObj), function(err) {
+            if (err) throw err;
+        });
+    }
 });
 
 
-// write
-function write(){
-if(paramObject){
-    fs.writeFile("writeToJson.json", JSON.stringify(newObj), function(err) {
-        if (err) throw err;
-    });
-}
+// Write MIDI Data
+maxApi.addHandler('writeMidiData', (inletObject) => {
+    paramObject = JSON.parse(inletObject); // parse inletObject
+    newObj[dynamicParamName] = paramObject; //append inletObject
+        if (paramObject) {
+        fs.writeFile("midi.json", JSON.stringify(newObj), function(err) {
+            if (err) throw err;
+        });
+    }
+});
+
+function write() {
+    if (paramObject) {
+        fs.writeFile("writeToJson.json", JSON.stringify(newObj), function(err) {
+            if (err) throw err;
+        });
+    }
 }
 
 // FUNCTION TO GET INLET PARAM OBJECT
 maxApi.addHandler('writeData', (x) => {
-
     console.log(newObj);
     fs.writeFile("writeToJson.json", JSON.stringify(newObj), function(err) {
         if (err) throw err;

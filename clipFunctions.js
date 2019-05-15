@@ -205,24 +205,7 @@ function setClipZone(clipZoneButton) {
 
 }
 
-///////////////////////////////////////////////// CLIP MIDI NOTES //////////////////////////
 
-function getMidiNotes() {
-    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
-    liveSet.call("select_all_notes");
-    clipMidiNotes = liveSet.call("get_selected_notes");
-    log("Clip Midi Notes:", clipMidiNotes);
-}
-
-function clearMidiNotes() {
-    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
-    liveSet.call("select_all_notes");
-    clipMidiNotes = liveSet.call("get_selected_notes");
-    log("Clip Midi Notes:", clipMidiNotes);
-    liveSet.call("replace_selected_notes");
-    liveSet.call("notes", 0);
-    liveSet.call("done");
-}
 
 ///////////////////////////////////////////////// CLIP NAME //////////////////////////
 
