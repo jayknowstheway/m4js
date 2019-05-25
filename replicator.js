@@ -1,171 +1,49 @@
-// deviceFunctions.js -- now includes JSON Parse
+// replicator.js
 autowatch = 1;
 inlets = 1;
 outlets = 2;
 
-//const maxApi = require("max-api");
-
-// GLOBAL VARIABLES ----------------------------------------------------------------------//
 var logEnabled = 1;
-
-var track = null;
-var trackNumber = 0;
-var trackPath = null;
-var trackId = null;
-var trackChangeInit = 0;
-
-var devicePath = null;
-var selectedDevice = 0;
-var device = new LiveAPI("live_set tracks " + trackNumber + " devices " + selectedDevice);
-
-var param = null;
-var chosenParam = null;
+var nextDevice;
+var numOfParams;
 var paramObject = [];
-var paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
+var deviceName;
+var arrayOfParamValues;
 
-var params = null;
-var paramCount = null;
-var paramsTotal = 64;
+var memstr;
+var mem = new Object();
+var UI = new Object();
+var UIMidi = new Object();
+//var p = "/Users/jwalker/Documents/Max\ 8/Max\ for\ Live\ Devices/JS-BUILDER\ Project/code/replicator.json";
+var p = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON\ USER\ LIBRARY/PATCHES/M4L\ PATCHES/CUSTOM/JS/replicator.json";
 
-var currentClip = null;
-var playingSlotIndexOld = null;
+var maxKnobValue = 127;
+var interpolateArray;
 
-var numOfParams = null;
-var paramStr = "";
-var clipName = "";
-var arrayOfParamValues = "";
-var arrayOfParamValuesLength = arrayOfParamValues.length;
 
-var bank = 0;
-var bankParam = 0;
+// GET PARAM VALUES /////////////////////////////////////////
 
-var readTempInit = 0;
-
-var clipMidiNotes = null;
-var arrayOfMidiValues;
-
-// INIT FUNCTIONS ------------------------------------------------------------------------//
-
-function onTrackChange(trackNoInlet) {
-    trackChangeInit = 0;
-    trackNumber = trackNoInlet;
-    if (trackNumber == "bang") {
-        trackNumber = 0;
+function getParamValues() {
+    nextDevice = getNextDevice();
+    numOfParams = nextDevice.getcount('parameters');
+    log("getParamValues - nextDevice.path", nextDevice.path, "numOfParams", numOfParams);
+    deviceName = nextDevice.get('name');
+    log(deviceName);
+    for (i = 0; i < numOfParams; i++) {
+        var nextDevicePath = removeQuotes(nextDevice.path);
+        var pathArray = nextDevicePath.split(" ");
+        // add param number
+        pathArray.push('parameters', i);
+        //rebuild the string
+        var newPath = pathArray.join(" ");
+        var selectedParam = new LiveAPI(newPath);
+        var paramValue = selectedParam.get('value');
+        paramObject[i] = paramValue;
+        selectedParam.get('name');
+        log(selectedParam.get('name'), paramValue);
+        var paramChunkArray = [];
     }
-    track = new LiveAPI("live_set tracks " + trackNumber);
-    trackId = Number(track.id);
-    trackPath = track.path;
-    device = new LiveAPI("live_set tracks " + trackNumber + " devices " + selectedDevice);
-    devicePath = device.path;
-    // Actions
-    getPlayingSlot();
-}
-
-function onClipFire(firedSlotIndex) {
-    if (firedSlotIndex != -1 && firedSlotIndex != null) {
-        currentClip = firedSlotIndex;
-        // Actions
-        getClipName();
-    }
-}
-
-function onClipChange(playingSlotIndex) {
-    if (playingSlotIndexOld != playingSlotIndex && clipName.constructor.toString().indexOf("Array") != -1) {
-        currentClip = playingSlotIndex;
-        setParamValues();
-        playingSlotIndexOld = playingSlotIndex;
-        readTempInit = 0;
-    }
-}
-
-function onParamChange(chosenParam) {
-    log("-deviceFunctions: onParamChange- param", param);
-    param = new LiveAPI("live_set tracks " + trackNumber + " devices " + selectedDevice + " parameters " + chosenParam);
-}
-
-// COMMANDS -----------------------------------------------------------------------------//
-
-function writeParams() {
-    getParamValues2();
-    writeParamValues();
-}
-
-function writeTempObject() {
-    getParamValues2();
-    writeTemp();
-}
-
-function writeMidi() {
-    getMidiValues();
-    writeMidiValues();
-}
-
-function setClipName() {
-    setClipNameToParamValues();
-}
-
-
-// GLOBAL FUNCTIONS ----------------------------------------------------------------------//
-
-function getPlayingSlot() {
-    var track = new LiveAPI("live_set tracks " + trackNumber);
-    var playingSlotIndex = track.get('playing_slot_index');
-    log("-deviceFunctions - playingSlotIndex", playingSlotIndex);
-    if (trackChangeInit == 0) {
-        trackChangeInit = 1;
-        currentClip = playingSlotIndex;
-    }
-    log('-deviceFunctions: getPlayingSlot - currentClip', currentClip);
-    // Actions
-    getClipName();
-}
-
-function getClipName() {
-    var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
-    log("-deviceFunctions: getClipName - liveSet.path:", liveSet.path);
-    if (liveSet.path != "") {
-        clipName = liveSet.get('name');
-        log('-deviceFunctions: getClipName - clipName:', clipName);
-        arrayOfParamValues = clipName.toString().split(" ");
-        log('-deviceFunctions: getClipName - arrayOfParamValues:', arrayOfParamValues, 'arrayOfParamValues.length:', arrayOfParamValues.length);
-    }
-}
-
-// COMMAND FUNCTIONS ---------------------------------------------------------------------//
-
-// PARAMS //
-
-function setClipNameToParamValues() {
-    numOfParams = device.getcount('parameters');
-    // Get Param Values
-    var chosenParam = 0;
-    var paramValue = null;
-    for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
-        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
-        paramValue = paramPath.get('value');
-        paramObject[chosenParam] = paramValue;
-    }
-    // Set Clip Name
-    var liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
-    clipName = liveSet.set('name', paramObject);
-}
-
-function getParamValues2() {
-// creates arrayOfParamValues in object with multiple arrays
-    var paramChunkArray = new Array();
-    var chosenParam = 0;
-    var paramValue = null;
-    numOfParams = device.getcount('parameters');
-    // create param values object, ex: length = 65
-    for (chosenParam = 0; chosenParam < numOfParams; chosenParam++) {
-        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + chosenParam);
-        paramValue = paramPath.get('value');
-        paramObject[chosenParam] = paramValue;
-    }
-    log("-deviceFunctions: getParamValues2 - paramObject:", paramObject.length, typeof(paramObject), paramObject);
-    // split param object into chunks of 8, ignoring first number
-    // note: this will create write function [[ [1],[2],[3] ]]
-    arrayOfParamValues = (chunk(paramObject, 8));
+    arrayOfParamValues = (chunk(paramObject, 10));
     // create arrays for each group of 8, and remove string
     for (var i = 0; i < arrayOfParamValues.length; i++) {
         paramObject[i] = '[' + arrayOfParamValues[i] + ']';
@@ -175,189 +53,11 @@ function getParamValues2() {
     }
     //    log('paramChunkObject',paramChunkArray);
     arrayOfParamValues = paramChunkArray;
-    log("arrayOfParamValues length", arrayOfParamValues.length, 'arrayOfParamValues', arrayOfParamValues);
 }
 
-function setParamValues() {
-// Set Param Values based on Clip Name
-    var chosenParam = 0;
-    arrayOfParamValuesLength = arrayOfParamValues.length;
-    log("-deviceFunctions: setParamValues - arrayOfParamValues", arrayOfParamValues, 'arrayOfParamValuesLength', arrayOfParamValuesLength);
-    for (var i = 0; i < arrayOfParamValuesLength; i++) {
-        //log('i:', i, 'arrayOfParamValues', arrayOfParamValues[i]);
-        if (arrayOfParamValues[i] != null && arrayOfParamValues[i] != "" && clipName != null) {
-            paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + i);
-            paramPath.set('value', arrayOfParamValues[i]);
-            //log("PARAM CHANGE", "ParameterNo:", i, "ParameterValue", arrayOfParamValues[i]);
-        } else {
-            log('setParamValues -- SOMETHING IS EQUAL TO NULL');
-            log('setParamValues -- arrayOfParamValues[i]', arrayOfParamValues[i], 'arrayOfParamValues', arrayOfParamValues, 'clipName', clipName);
-        }
-    }
-}
-
-function setParamValues2() {
-// Set Param Values based on JSON
-    var chosenParam = 0;
-    arrayOfParamValuesLength = arrayOfParamValues.length;
-    var n = arrayOfParamValuesLength;
-    while(n--){
-	var n2 = arrayOfParamValues[n].length;
-	//        if (arrayOfParamValues[i] && arrayOfParamValues[i] != "" && clipName != null) {
-	while(n2--){
-                paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + (n2 + 1 + n * 8));
-                paramPath.set('value', arrayOfParamValues[n][n2]);
-                log("PARAM CHANGE", "ParameterNo:", n, "ParameterValue", arrayOfParamValues[n]);
-            }
-        } //else {
-//            log('setParamValues -- SOMETHING IS EQUAL TO NULL');
-//            log('setParamValues -- arrayOfParamValues[i]', arrayOfParamValues[i], 'arrayOfParamValues', arrayOfParamValues, 'clipName', clipName);
-}
-
-// DIALS AND BANKS //
-
-function getParameter(paramNum) {
-// Get Parameter value so Dial can affect it-
-    if (params == null) {
-        paramCount = new LiveAPI();
-        params = new Array(paramsTotal);
-        for (var i = 0; i < paramsTotal; i++)
-            params[i] = new LiveAPI();
-    }
-    // Check if parameter is available
-    paramCount.path = ['live_set', 'view', 'selected_track', 'devices', '0'];
-    var size = paramCount.getcount('parameters');
-    if (paramNum >= size)
-        return null;
-    var p = params[paramNum - 1];
-    p.path = ['live_set', 'view', 'selected_track', 'devices', '0', 'parameters', paramNum];
-    return p;
-}
-
-function setDial(dial, val) {
-    if (trackChangeInit == 0) {
-        bank = 0;
-        trackChangeInit = 1;
-        log('bank reset to 0');
-    } else {
-        getSelectedBank();
-        dial = dial + bank;
-    }
-
-    var param = getParameter(dial);
-    log('setDial - Parameter #' + dial, 'bank', bank / 8);
-    if (param == null) {
-        log('\nNo Parameter #' + dial);
-        return;
-    }
-    // Scale from 0-127 to min-max range
-    var min = parseFloat(param.get('min'));
-    var max = parseFloat(param.get('max'));
-    var scaled = min + ((max - min) / 127.0 * val);
-    param.set('value', scaled);
-}
-
-function getSelectedBank(midiNote) {
-    trackChangeInit = 1;
-    if (midiNote > 119) {
-        switch (midiNote) {
-            case 120:
-                bank = 0;
-                break;
-            case 121:
-                bank = 1;
-                break;
-            case 122:
-                bank = 2;
-                break;
-            case 123:
-                bank = 3;
-                break;
-            case 124:
-                bank = 4;
-                break;
-            case 125:
-                bank = 5;
-                break;
-            case 126:
-                bank = 6;
-                break;
-            case 127:
-                bank = 7;
-                break;
-            case 128:
-                bank = 8;
-                break;
-        }
-        bank = bank * 8;
-        log('Selected Bank', bank / 8);
-    }
-}
-
-
-// CLIP MIDI NOTES //
-
-function getMidiValues() {
-    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
-    liveSet.call("select_all_notes");
-    clipMidiNotes = liveSet.call("get_selected_notes");
-    log("Clip Midi Notes:", clipMidiNotes);
-    arrayOfMidiValues = '[' + clipMidiNotes + ']';
-}
-
-function clearMidiNotes() {
-    var liveSet = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
-    liveSet.call("select_all_notes");
-    clipMidiNotes = liveSet.call("get_selected_notes");
-    log("Clip Midi Notes:", clipMidiNotes);
-    liveSet.call("replace_selected_notes");
-    liveSet.call("notes", 0);
-    liveSet.call("done");
-}
-
-// JSON RELATED //
-
-function anything() {
-// fill UI with UI[0][1][2]:
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    //var data = a[2];
-    var data = a.slice(2);
-    post("\nanything", id, ",", property, ",", data);
-    if (UI == null) {
-        UI = new Object();
-    }
-    if (UI[id] == null) {
-        log('anything: UI[id] was null ---------------');
-        UI[id] = new Object();
-    }
-    if(UI[id][property]){
- data = a[2];
-	UI[id][property][0] = data;
-    } else {
-	UI[id][property] = data;
-    }
-
-    log('-deviceFunctions: anything - data', data);
-}
-
-function anything2() {
-// fill UI with UI[0][1][2][3]:
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    var subProperty = a[2];
-    var data = a[3];
-    post("\nanything2", id, ",", property, ",", subProperty, ",", data);
-    if (UI[id] == null) {
-        UI[id] = new Object();
-    }
-    UI[id][property][subProperty] = data;
-}
 
 function chunk(arr, len) {
-// creates arrays in groups of 8
+    // creates arrays in groups of 10
     var chunks = [],
         i = 1,
         n = arr.length;
@@ -367,111 +67,132 @@ function chunk(arr, len) {
     return chunks;
 }
 
-function switchParamsArray(crud) {
-    read("PARAMS");
-    switch (crud) {
-        case 0: //"Create"
-        log('switchParamsArray CREATE!');
-		if(!UI[trackNumber][currentClip]){
-	    writeParams();
-	} else {
-            getParamValues2();
-            pushToArray(trackNumber, currentClip, arrayOfParamValues);
-	}
-            break;
-        case 1: // "ReadNext"
-        log('switchParamsArray READNEXT!');
-	if(!UI[trackNumber][currentClip]){
-	    	    writeParams();
-	} else {
-            (UI[trackNumber][currentClip]).push(UI[trackNumber][currentClip].shift());
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            setParamValues2();
-	}
-            break;
-        case 2: // "ReadPrevious"
-            log('switchParamsArray READPREVIOUS!');
-	if(!UI[trackNumber][currentClip]){
-	    	    writeParams();
-	} else {
-        (UI[trackNumber][currentClip]).unshift(UI[trackNumber][currentClip].pop());
-            arrayOfParamValues = UI[trackNumber][currentClip][0];
-            setParamValues2();
-	}
-            break;
-        case 3: // "Update"
-            log('switchParamsArray UPDATE!');
-            //            getParamValues2();
-            //            anything(trackNumber, currentClip, arrayOfParamValues);
-            break;
-        case 4: // "Delete"
-        log('switchParamsArray DELETE!');
-		if(UI[trackNumber][currentClip]){
-            UI[trackNumber][currentClip].splice(0, 1);
-            arrayOfParamValues = UI[trackNumber][currentClip];
-		    setParamValues2();
-		}
-            break;
+// SET FUNCTIONS
 
+function setParamValues() {
+    var chosenParam = 0;
+    var arrayOfParamValuesLength = arrayOfParamValues.length;
+    var n = arrayOfParamValuesLength;
+
+    // Set Param Values based on JSON
+    while (n--) {
+        var n2 = arrayOfParamValues[n].length;
+        while (n2--) {
+            var nextDevicePath = removeQuotes(nextDevice.path);
+            var pathArray = nextDevicePath.split(" ");
+            // add param number
+            pathArray.push('parameters', n);
+            //rebuild the string
+            var newPath = pathArray.join(" ");
+            var selectedParam = new LiveAPI(newPath);
+            selectedParam.set('value', arrayOfParamValues[n][n2]);
+            log("PARAM CHANGE", "ParameterNo:", n, "ParameterValue", arrayOfParamValues[n]);
+        }
+    } //else {
+    //            log('setParamValues -- SOMETHING IS EQUAL TO NULL');
+    //            log('setParamValues -- arrayOfParamValues[i]', arrayOfParamValues[i], 'arrayOfParamValues', arrayOfParamValues, 'clipName', clipName);
+}
+
+// DEVICE PATH MANIPULATION ///////////////////////////////////
+
+function getNextDevice() {
+    var api = new LiveAPI();
+    api.path = 'live_set view selected_track this_device';
+
+    var nextPath = removeQuotes(api.path);
+    nextPath = moveToTheRight(nextPath); // + " chain 10";
+
+    //pipe that string back into the LiveAPI
+    api = new LiveAPI(nextPath);
+
+    //and confirm that this worked
+    return api;
+}
+
+function moveToTheRight(devicePath) {
+    //split into a more usable array
+    var pathArray = devicePath.split(" ");
+
+    // increment the device number
+    var newNumber = Number(pathArray.slice(-1)[0]) + 1;
+    pathArray.splice(-1, 1, newNumber);
+
+    //rebuild the string
+    return pathArray.join(" ");
+}
+
+function removeQuotes(str) {
+    return str.split('"').join("");
+}
+
+
+
+// INTERPOLATOR ////////////////////////////////////////////////
+// Note: This only works for arrays like this [0,1,2],[2,3,4]
+function interpolator(knob) {
+    //  read();
+    //    log('arrayPoints', arrayPoints[0][1]);
+    var currentPosition = [];
+    var input;
+    var idx;
+    var frac;
+    var output;
+
+    var combined = [];
+    var arrayIndex = [];
+    var arrayPoints = [];
+
+    for (var i = 0; i < interpolateArray.length; i++) {
+        arrayPoints.push(interpolateArray[i]);
+//	log('interpolateArray', interpolateArray, interpolateArray.length);
     }
-    //write function
-    var jase = JSON.stringify(UI);
-    log('UI from writeParamValues', UI);
-    outlet(0, jase);
-    //log('UI[trackNumber][currentClip].length', (UI[trackNumber][currentClip].length));
-}
-
-function test() {
-    read();
-    log('TEST FUNCTION');
-    randomizeParams();
-    /*
-    // replaces an array entry
-    read();
-    //    getParamValues2();
-    arrayOfParamValues = [1,2,3,4,5,6,7,8];
-    // the third item is the selected device, BYOTCH
-    anything2(trackNumber, "TEMP", "1", arrayOfParamValues);
-    var jase = JSON.stringify(UI, null, '\t');
-    var path = p;
-    var fout = new File(path, "readwrite", "JSON");
-    if (fout.isopen) {
-        fout.writeline(jase);
-        fout.close();
-        post("\nJSON Write", path);
-    } else {
-        post("\ncould not create json file: " + path);
+    for (var i = 0; i < arrayPoints.length; i++) {
+        for (var j = 0; j < arrayPoints[i].length; j++) {
+            if (!combined[j]) {
+                combined[j] = new Array;
+            }
+            combined[j].push(arrayPoints[i][j]);
+        }
+//	log('LOGGED1', combined.length);
     }
-    */
-}
+    // new arrays are created for each index
+    for (var i = 0; i < (combined.length); i++) {
+//		log('LOGGED2');
+        var bigValues = combined[i];
+        input = knob / maxKnobValue;
+        idx = Math.floor(input * (bigValues.length - 1));
+        frac = (input - (idx) / (bigValues.length - 1)) * (bigValues.length - 1);
+        if (frac == 0) {
+            /* no need to calculate */
+            output = bigValues[idx];
+        } else {
+            output = bigValues[idx] + (bigValues[idx + 1] - bigValues[idx]) * frac;
+        };
+        currentPosition = (output);
+        // log('currentPosition i combined[i] output', i, combined[i], output);
 
-function randomizeParams() {
-    for (var j = 0; j < 8; j++) {
-        paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + Number((j * 8) + 1));
-        var randomVal = (Math.floor((Math.random() * 127) + 0));
-        paramPath.set('value', randomVal);
-        log((j * 8) + 1, Math.floor(Math.random() * 127) + 0);
+        //
+        var nextDevicePath = removeQuotes(nextDevice.path);
+        var pathArray = nextDevicePath.split(" ");
+        // add param number
+        pathArray.push('parameters', i + 1);
+        //rebuild the string
+        var newPath = pathArray.join(" ");
+        var secondDevice = new LiveAPI(newPath);
+
+        	log('interpolate =', secondDevice.get('name'));
+        secondDevice.set('value', output);
+        //	secondDevice.get('name');
+
+        log('output', currentPosition);
     }
-    paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + 13);
-    paramPath.set('value', (Math.floor((Math.random() * 127) + 0)));
+   // outlet(1, currentPosition);
 }
 
 
-// JSON CODE -----------------------------------------------------------------------------//
-var memstr;
-var mem = new Object();
-var UI = new Object();
-var p = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON USER LIBRARY/PATCHES/M4L PATCHES/CUSTOM/JS/params.json";
-var midiFile = "/Users/jwalker/Music/AUDIO/ABLETON/ABLETON USER LIBRARY/PATCHES/M4L PATCHES/CUSTOM/JS/midi.json";
+// READ ///////////////////////////////////////////////////////////
 
-function clear() {
-    UI = new Object();
-    post("\ncleared");
-    //read();
-}
-
-function read(objKey) {
+function read() {
     memstr = "";
     data = "";
     maxchars = 8000;
@@ -486,109 +207,60 @@ function read(objKey) {
     } else {
         post("Error\n");
     }
+    createInterpolateArray();
+}
+
+function createInterpolateArray() {
+    var objKey = deviceName;
     var UIObject = JSON.parse(memstr);
     if (objKey == null) {
         objKey = "PARAMS";
     }
     UI = UIObject[objKey];
-    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
-}
-
-function readMidi() {
-    memstr = "";
-    data = "";
-    maxchars = 8000;
-    path = midiFile;
-    var f = new File(path, "read");
-    f.open();
-    if (f.isopen) {
-        while (f.position < f.eof) {
-            memstr += f.readstring(maxchars);
+    if (UI) {
+        interpolateArray = UI[deviceName];
+        //log('read trackNumber currentClip', trackNumber, currentClip);
+        log('read() UI=interpolateArray', interpolateArray, 'length', interpolateArray.length);
+        for (i = 0; i < interpolateArray.length; i++) {
+            log('target arrays:', interpolateArray[i], 'length', interpolateArray[i].length, '\n');
         }
-        f.close();
-    } else {
-        post("Error\n");
     }
-    var UIObject = JSON.parse(memstr);
-    UI = UIObject["MIDI"];
+    log('UI in read function - ', UI);
     //    UI = eval("(" + memstr + ")"); //much less secure, but could work
 }
 
-function readTemp() {
-    // read();
-    if ((UI[trackNumber][currentClip]) == undefined) {
-        writeParams();
-    }
-
-    // log('readTemp: UI["0"]["TEMP"][0][0]', UI["0"]["TEMP"][0][2]);
-    if (readTempInit != 1) {
-        arrayOfParamValues = (UI['TEMP-' + trackNumber]["GENERIC"]);
-        post("\nJSON Read", 'arrayOfParamValues', arrayOfParamValues);
-        setParamValues2();
-        readTempInit = 1;
-    } else {
-        //   getClipName();
-        //	arrayOfParamValues = UI["0"][currentClip];
-        arrayOfParamValues = UI[trackNumber][currentClip];
-        post('\nreadTemp ELSE', arrayOfParamValues);
-        setParamValues2();
-        readTempInit = 0;
-    }
-}
+// WRITE FUNCTIONS /////////////////////////////////////////////////////
 
 function write() {
-    // clear();
-    /*
     read();
-    getParamValues2();
-    anything(trackNumber, currentClip, arrayOfParamValues);
-    var jase = JSON.stringify(UI, null, '\t');
-    var path = p;
-    var fout = new File(path, "write", "JSON");
-    if (fout.isopen) {
-        fout.writeline(jase);
-        fout.close();
-        post("\nJSON Write", path);
-    } else {
-        post("\ncould not create json file: " + path);
+    anything(arrayOfParamValues);
+    var jase = JSON.stringify(UI);
+    log('UI from write', UI);
+    outlet(1, deviceName);
+    outlet(0, jase);
+}
+
+function anything(a) {
+
+    var data = a;
+    if (UI == null) {
+        UI = new Object();
+        log('anything - new UI Object created');
     }
-    */
-    log('write function is on the chopping block');
+    if (UI[deviceName]) {
+        log('anything - contents of UI[0]', UI[0]);
+        data = a;
+        UI[deviceName][0] = data;
+    } else {
+        UI[deviceName] = data;
+    }
+
+    log('anything - data/UI', data, UI);
 }
 
-function writeParamValues() {
-    //clear();
-    read("PARAMS");
-    anything(trackNumber, currentClip, arrayOfParamValues);
-    var jase = JSON.stringify(UI);
-    log('UI from writeParamValues', UI);
-    log('jase from writeParamValues TEST', jase);
-    outlet(0, jase);
-}
-
-
-function writeMidiValues() {
-    //clear();
-    readMidi("MIDI");
-    anything(trackNumber, currentClip, arrayOfMidiValues);
-    var jase = JSON.stringify(UI);
-    log('UI from writeParamValues', UI);
-    outlet(1, jase);
-}
-
-var tempWord = "TEMP";
-
-function writeTemp() {
-    // clear();
-    read("PARAMS");
-    anything('TEMP-' + trackNumber, 'GENERIC', arrayOfParamValues);
-    var jase = JSON.stringify(UI);
-    log('UI from writeTemp', UI);
-    outlet(0, jase);
-}
-
-function pushToArray() {
+function pushToArray(a) {
     // push additional anything array
+    /*
     var a = arrayfromargs(arguments);
     var id = a[0];
     var property = a[1];
@@ -596,64 +268,85 @@ function pushToArray() {
     //var data = a.slice(2);
     // the .slice method creates a new unnecessary array.
     post("\nanything", id, ",", property, ",", data);
+    */
+    var data = a;
     if (UI == null) {
         UI = new Object();
+        log('pushToArray, new UI object created');
     }
-    if (UI[id] == null) {
-        log('anything: UI[id] was null ---------------');
-        UI[id] = new Object();
+    if (UI[deviceName] == null) {
+        log('anything: UI[deviceName] was null ---------------');
+        UI[deviceName] = new Object();
     }
 
-    UI[id][property][UI[id][property].length] = data;
+    UI[deviceName][UI[deviceName].length] = data[0]; //[id][property][UI[id][property].length] = data;
+    log('pushToArray - data', data);
 }
 
-function setResetParamValues() {
-    clear();
-    anything(trackNumber, currentClip);
-    log('UI[trackNumber][currentClip]', trackNumber, currentClip, '//', UI[trackNumber][currentClip]);
-    write();
+// CRUD ////////////////////////////////////////////////////////////////
+
+function crud(crud) {
+    read();
+    switch (crud) {
+        case 0: //"Create"
+            log('crud CREATE!');
+            if (!UI) {
+                write();
+            } else {
+                getParamValues();
+                pushToArray(arrayOfParamValues);
+            }
+            break;
+        case 1: // "ReadNext"
+            log('crud READNEXT!');
+            if (!UI) {
+                write();
+            } else {
+                (UI).push(UI.shift());
+                arrayOfParamValues = UI[0];
+                arrayOfParamValues = UI[0];
+                setParamValues();
+            }
+            break;
+        case 2: // "ReadPrevious"
+            log('crud READPREVIOUS!');
+            if (!UI) {
+                write();
+            } else {
+                (UI).unshift(UI.pop());
+                arrayOfParamValues = UI[0];
+                setParamValues();
+            }
+            break;
+        case 3: // "Update"
+            log('crud UPDATE!');
+            //            getParamValues2();
+            //            anything(trackNumber, currentClip, arrayOfParamValues);
+            break;
+        case 4: // "Delete"
+            log('switchParamsArray DELETE!');
+            if (UI) {
+                UI.splice(0, 1);
+                arrayOfParamValues = UI;
+                setParamValues();
+            }
+            break;
+
+    }
+    //write function
+    var jase = JSON.stringify(UI);
+    log('UI from writeParamValues', UI);
+    outlet(0, jase);
+    //log('UI[trackNumber][currentClip].length', (UI[trackNumber][currentClip].length));
 }
 
-// NOTES ---------------------------------------------------------------------------------//
-/*
 
-1. How to get from params to json:
-   (calls the writeParams function)
-          a) getParamValues2
-             - gets all parameter values
-	     - creates a single array of all of them
-	     - Chunk function splits them into arrays of arrays of 8
-	     - Stringified
-	     - result = arrayOfParamValues
-          b) writeParamValues
-	     - calls Read("PARAMS") from p = path-to-params.json to load UI var with json data from writeToJson.json
-	         objKey = "PARAMS";
-	         (UI = UIObject[objKey];)
-	     - calls anything(trackNumber, currentClip, arrayOfParamValues)
-	         (this creates UI[id][property][0] = data.
-	     - UI is stringified (including new info), and is sent to Node.
-	  c) Node takes object and writes to file.!
+function test() {
+    log(UI);
+    log(UI[deviceName][0]);
 
-2. How to get from midi notes to json:
-    (calls the writeMidi function) CHECK
-          a) getMidiNotes CHECK
-	      - gets midi notes CHECK
-	      - creates single array of all midi notes CHECK
-	      - Chunk function based on position??
-	      - (Stringified)
-	      - result = arrayOfMidiNotes CHECK
-	  b) writeMidiValues CHECK
-	      - calls Read("MIDI") from midiFile = path-to-midi.json to load UI(or other) var with json data from writeToJson.json CHECK
-	      - calls anything(trackNumber, currentClip, arrayOfMidiValues) CHECK
-	          (this creates UI[id][property][0] = data.
-	      - UI is stringified and sent to Node. CHECK
-	  c) Node takes object and writes to file. CHECK
-	      
+}
 
-
-
-
-*/
 
 
 // LOGGING -------------------------------------------------------------------------------//

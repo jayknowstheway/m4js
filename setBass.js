@@ -9,26 +9,37 @@ var logEnabled = 1;
 
 
 var trackNumber = null;
+track = new LiveAPI("live_set tracks 4");
+trackNumber = Number(track.unquotedpath.split(' ')[2]);
+var currentClip = null;
 var selectedDevice = 0;
 var paramNum = 1;
 
-
-
+var rackChain = 0;
+var rackDevice = 0;
 var maxKnobValue = 127;
+var interpolateArray;
 
+var memstr;
+var mem = new Object();
+var UI = new Object();
+var UIMidi = new Object();
+var p = "/Users/jwalker/Documents/Max\ 8/Max\ for\ Live\ Devices/JS-BUILDER\ Project/code/params.json";
+
+
+// init functions //////////////////////////////
+function onClipChange(playingSlotIndex) {
+    currentClip = playingSlotIndex;
+    read();
+}
+
+//////////////////////////////////////////////
+
+// INTERPOLATOR
+// Note: This only works for arrays like this [0,1,2],[2,3,4]
 function slider(knob) {
-    /*
-    var arrayPosition = knob/(maxKnobValue)*(arrayPoints.length-1); // sets the array range
-    var rangeDivision = maxKnobValue/arrayPoints.length;
-    var arrayMin = Math.floor(arrayPosition);
-    var arrayMax = Math.ceil(arrayPosition);
-    var newArray = arrayPoints.slice(arrayMin, arrayMax+1);
-*/
-    var arrayPoints = [
-        [0, 100, 20],
-        [127, 20, 70],
-        [1, 25, 63]
-    ];
+
+//    log('arrayPoints', arrayPoints[0][1]);
     var currentPosition = [];
     var input;
     var idx;
@@ -37,7 +48,12 @@ function slider(knob) {
 
     var combined = [];
     var arrayIndex = [];
-    for (var i = 0; i < arrayPoints.length; i++) {
+    var arrayPoints = [];
+
+    for (var i = 0; i < interpolateArray.length; i++) {
+	arrayPoints.push(interpolateArray[i][1]);
+    }
+    for ( i = 0; i < arrayPoints.length; i++) {
         for (var j = 0; j < arrayPoints[i].length; j++) {
             if (!combined[j]) {
                 combined[j] = new Array;
@@ -46,7 +62,7 @@ function slider(knob) {
         }
     }
     // new arrays are created for each index
-    for (i = 0; i < combined.length; i++) {
+    for (i = 0; i < (combined.length); i++) {
         var bigValues = combined[i];
         input = knob / maxKnobValue;
         idx = Math.floor(input * (bigValues.length - 1));
@@ -57,104 +73,108 @@ function slider(knob) {
         } else {
             output = bigValues[idx] + (bigValues[idx + 1] - bigValues[idx]) * frac;
         };
-        currentPosition = output;
-//        log('currentPosition', i, combined[i], output);
-	var secondDevice = new LiveAPI('live_set view selected_track devices 1 parameters ' + (i+1));
-	secondDevice.set('value', output);
-	
+        currentPosition = (output);
+                log('currentPosition i combined[i] output', i, combined[i], output);
+        	var secondDevice = new LiveAPI('live_set tracks 4 devices 1 chains 1 devices 0 parameters ' + (i+1));
+        //	log('interpolate =', secondDevice.get('name'));
+        	secondDevice.set('value', output);
+        //	secondDevice.get('name');
+
+//        log('output', currentPosition);
     }
     outlet(1, currentPosition);
 }
 
 
-// init functions
-// changes track number
-function setDrumTrackNo(midiNote) {
-    if (midiNote > 119) {
-        switch (midiNote) {
-            case 120:
-                selectedDevice = 1;
-                break;
-            case 121:
-                selectedDevice = 1;
-                break;
-            case 122:
-                selectedDevice = 2;
-                break;
-            case 123:
-                selectedDevice = 3;
-                break;
-            case 124:
-                selectedDevice = 4;
-                break;
-            case 125:
-                selectedDevice = 5;
-                break;
-            case 126:
-                selectedDevice = 6;
-                break;
-            case 127:
-                selectedDevice = 7;
-                break;
-        }
-        log('Selected Track', trackNumber);
-
-        if (trackNoInlet != trackNumber) {
-            trackNumber = trackNoInlet;
-            if (trackNumber == null) {
-                track = new LiveAPI("live_set view selected_track");
-                var selectedTrack = track.path;
-                trackNumber = Number(track.unquotedpath.split(' ')[2]);
-            }
-            log('trackNumber', trackNumber);
-            for (i = 0; i < 10; i++) {
-                getParameterValue(i);
-            }
-        }
-    }
-}
-
-
 function getParameterValue(paramNum) {
-    var p = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + paramNum);
+    var p = new LiveAPI('live_set tracks 4 devices ' + selectedDevice + ' parameters ' + paramNum);
     log('Parameter', paramNum, p.get('name'), p.get('value'));
 }
 
 
+var numChain = 0;
 
 function setDrum(dial, val) {
     switch (true) {
         case (dial < 9):
-            selectedDevice = 1;
-            log('dial less than 9', selectedDevice);
+            numChain = 0;
+            rackChain = 0;
+            rackDevice = 0;
             break;
         case (dial < 17):
-            selectedDevice = 1;
-            log('dial less than 17', selectedDevice);
+            numChain = 1;
+            rackChain = 1;
+            rackDevice = 0;
             break;
         case (dial < 25):
-            selectedDevice = 2;
+            numChain = 2;
+            rackChain = 0;
+            rackDevice = 2;
             break;
         case (dial < 33):
-            selectedDevice = 3;
+            numChain = 3;
+            rackChain = 0;
+            rackDevice = 3;
             break;
         case (dial < 41):
-            selectedDevice = 4;
+            numChain = 4;
+            rackChain = 1;
+            rackDevice = 0;
             break;
         case (dial < 49):
-            selectedDevice = 5;
+            numChain = 5;
+            rackChain = 1;
+            rackDevice = 1;
             break;
         case (dial < 57):
-            selectedDevice = 6;
+            numChain = 6;
+            rackChain = 1;
+            rackDevice = 2;
             break;
         case (dial < 65):
-            selectedDevice = 7;
+            numChain = 7;
+            rackChain = 1;
+            rackDevice = 3;
             break;
     }
-    liveSet = new LiveAPI(callback, 'live_set view selected_track devices ' + selectedDevice + ' parameters ' + Number(dial));
+    liveSet = new LiveAPI('live_set tracks 4 devices 1 chains ' + rackChain + ' devices ' + rackDevice + ' parameters ' + Number((dial) - (8 * numChain)));
     liveSet.set('value', val);
-    log('dial and val', trackNumber, liveSet.get('name'), Number(dial), val);
+    log('dial and val', liveSet.get('name'), Number(dial), val);
 }
+
+/////////////////////////////////////////////////
+//JSON READ
+
+function read() {
+    var objKey = "PARAMS";
+    memstr = "";
+    data = "";
+    maxchars = 8000;
+    path = p;
+    var f = new File(path, "read");
+    f.open();
+    if (f.isopen) {
+        while (f.position < f.eof) {
+            memstr += f.readstring(maxchars);
+        }
+        f.close();
+    } else {
+        post("Error\n");
+    }
+    var UIObject = JSON.parse(memstr);
+    if (objKey == null) {
+        objKey = "PARAMS";
+    }
+    UI = UIObject[objKey];
+    interpolateArray = UI[trackNumber][currentClip];
+    log('read trackNumber currentClip', trackNumber, currentClip);
+    log('read, interpolateArray', interpolateArray, interpolateArray.length);
+    for (i = 0; i < interpolateArray.length; i++) {
+        log('target arrays:', interpolateArray[i], interpolateArray[i].length, '\n');
+    }
+    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
+}
+
 
 // LOGGING -------------------------------------------------------------------------------//
 function log() {
