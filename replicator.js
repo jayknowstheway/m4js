@@ -59,7 +59,7 @@ function getParamValues() {
 function chunk(arr, len) {
     // creates arrays in groups of 10
     var chunks = [],
-        i = 1,
+        i = 0,
         n = arr.length;
     while (i < n) {
         chunks.push(arr.slice(i, i += len));
@@ -131,7 +131,6 @@ function removeQuotes(str) {
 // Note: This only works for arrays like this [0,1,2],[2,3,4]
 function interpolator(knob) {
     //  read();
-    //    log('arrayPoints', arrayPoints[0][1]);
     var currentPosition = [];
     var input;
     var idx;
@@ -144,7 +143,7 @@ function interpolator(knob) {
 
     for (var i = 0; i < interpolateArray.length; i++) {
         arrayPoints.push(interpolateArray[i]);
-//	log('interpolateArray', interpolateArray, interpolateArray.length);
+//        	log('interpolateArray', interpolateArray, interpolateArray.length);
     }
     for (var i = 0; i < arrayPoints.length; i++) {
         for (var j = 0; j < arrayPoints[i].length; j++) {
@@ -153,11 +152,10 @@ function interpolator(knob) {
             }
             combined[j].push(arrayPoints[i][j]);
         }
-//	log('LOGGED1', combined.length);
+        //	log('LOGGED1', combined.length);
     }
     // new arrays are created for each index
     for (var i = 0; i < (combined.length); i++) {
-//		log('LOGGED2');
         var bigValues = combined[i];
         input = knob / maxKnobValue;
         idx = Math.floor(input * (bigValues.length - 1));
@@ -175,20 +173,61 @@ function interpolator(knob) {
         var nextDevicePath = removeQuotes(nextDevice.path);
         var pathArray = nextDevicePath.split(" ");
         // add param number
-        pathArray.push('parameters', i + 1);
+        pathArray.push('parameters', i);
         //rebuild the string
         var newPath = pathArray.join(" ");
         var secondDevice = new LiveAPI(newPath);
 
-        	log('interpolate =', secondDevice.get('name'));
+        log('interpolate =', secondDevice.get('name'));
         secondDevice.set('value', output);
         //	secondDevice.get('name');
 
         log('output', currentPosition);
     }
-   // outlet(1, currentPosition);
+    // outlet(1, currentPosition);
 }
 
+///////////
+var interpolatePoints = 0;
+
+function switchPresets(upOrDown){
+    var arrayPoints = [];
+    log(interpolateArray);
+    for (var i = 0; i < interpolateArray.length; i++) {
+        arrayPoints.push(interpolateArray[i]);
+    }
+    var interpolateIndex = arrayPoints.length-1;
+    if(upOrDown == 1){
+	interpolatePoints = interpolatePoints+1;
+	if (interpolatePoints>interpolateIndex){
+	    interpolatePoints = 0;
+	}
+    } else if (upOrDown == 0){
+	interpolatePoints = interpolatePoints-1;
+	if (interpolatePoints<0){
+	    interpolatePoints = arrayPoints.length - 1;
+    }
+    }
+    log(interpolatePoints, arrayPoints[interpolatePoints], interpolatePoints);
+    var currentPosition = arrayPoints[interpolatePoints];
+    log('interpolatePoints - currentPosition', currentPosition);
+
+    for (var i = 0; i < (currentPosition.length); i++) {
+        var nextDevicePath = removeQuotes(nextDevice.path);
+        var pathArray = nextDevicePath.split(" ");
+        // add param number
+        pathArray.push('parameters', i);
+        //rebuild the string
+        var newPath = pathArray.join(" ");
+        var secondDevice = new LiveAPI(newPath);
+
+        log('interpolate =', secondDevice.get('name'));
+        secondDevice.set('value', currentPosition[i]);
+        //	secondDevice.get('name');
+
+        log('output', currentPosition);
+    }
+}
 
 // READ ///////////////////////////////////////////////////////////
 
@@ -218,14 +257,14 @@ function createInterpolateArray() {
     }
     UI = UIObject[objKey];
     if (UI) {
-        interpolateArray = UI[deviceName];
+        interpolateArray = UI[objKey];
         //log('read trackNumber currentClip', trackNumber, currentClip);
-        log('read() UI=interpolateArray', interpolateArray, 'length', interpolateArray.length);
+        log('createInterpolateArray() UI=interpolateArray', interpolateArray, 'length', interpolateArray.length);
         for (i = 0; i < interpolateArray.length; i++) {
             log('target arrays:', interpolateArray[i], 'length', interpolateArray[i].length, '\n');
         }
     }
-    log('UI in read function - ', UI);
+    log('UI in createInterpolateArray function - ', UI);
     //    UI = eval("(" + memstr + ")"); //much less secure, but could work
 }
 
@@ -302,9 +341,10 @@ function crud(crud) {
             if (!UI) {
                 write();
             } else {
-                (UI).push(UI.shift());
-                arrayOfParamValues = UI[0];
-                arrayOfParamValues = UI[0];
+                // this part needs to save/read a variable and iterate through UI[deviceName][i]
+                // (UI).push(UI.shift());
+                // arrayOfParamValues = UI[0];
+                // arrayOfParamValues = UI[0];
                 setParamValues();
             }
             break;
@@ -326,7 +366,7 @@ function crud(crud) {
         case 4: // "Delete"
             log('switchParamsArray DELETE!');
             if (UI) {
-                UI.splice(0, 1);
+                UI[deviceName].splice(0, 1);
                 arrayOfParamValues = UI;
                 setParamValues();
             }
@@ -344,6 +384,8 @@ function crud(crud) {
 function test() {
     log(UI);
     log(UI[deviceName][0]);
+    arrayOfParamValues = UI[deviceName][1];
+    log('TEST', arrayOfParamValues);
 
 }
 
