@@ -27,7 +27,8 @@ maxApi.addHandler('getDeviceName', (inletObject) => {
 // Write Param Data
 maxApi.addHandler('writeData', (inletObject) => {
     paramObject = JSON.parse(inletObject); // parse inletObject
-    newObj[dynamicParamName] = paramObject; //append inletObject
+//    newObj[dynamicParamName] = paramObject; //append inletObject
+    newObj = paramObject;
     console.log(paramObject);
         if (paramObject) {
         fs.writeFile("replicator.json", JSON.stringify(newObj), function(err) {
