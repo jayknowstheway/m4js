@@ -1,11 +1,5 @@
 outlets = 2;
 
-function setDial(val) {
-    liveSet = new LiveAPI('live_set view selected_track devices 1 chains 0 devices 0 parameters 1');
-    liveSet.set('value', val);
-    log('dial and val', liveSet.get('name'), val);
-}
-
 function test(input) {
     log('this test function was triggered', input);
     outlet(0, input);
@@ -26,18 +20,20 @@ function midiIn(input) {
         return parseInt(item, 10);
     });
     if(b[1] != 0){
+	/*
 	switch(b[0]){
 	case 36:kick(b[0]);
 	    break;
-	    
 	case 37: snare(b[0]);
 	    break;
 	}
     } else if(b[1] ==0){
 	outlet(1, Number(b[0]), 0);
-    }
+    
+*/
+}
     log('midi:', b);
-    outlet(0, b);
+    outlet(0, b[0]);
 }
 
 

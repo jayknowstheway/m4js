@@ -1,3 +1,19 @@
+// PRESET SAVER
+// This is the first device on a track and has control of the full preset, 
+// including standardized effects.
+
+
+
+
+
+// NOTES
+// The second device is the standard instrument device (or drum builder rack).
+// This device includes a sound switcher.
+
+// Standard devices are EQ, Compression, Distortion/Saturation(?), Chorus(?).
+// Standard effects are Reverb, Delay.
+
+
 // replicator.js
 autowatch = 1;
 inlets = 1;
@@ -185,109 +201,6 @@ function removeQuotes(str) {
     return str.split('"').join("");
 }
 
-
-// INTERPOLATOR ////////////////////////////////////////////////
-// Note: This only works for arrays like this [0,1,2],[2,3,4]
-
-function interpolator(knob) {
-    //  read();
-    var currentPosition = [];
-    var input;
-    var idx;
-    var frac;
-    var output;
-
-    var combined = [];
-    var arrayIndex = [];
-    var arrayPoints = [];
-
-    for (var i = 0; i < interpolateArray.length; i++) {
-        arrayPoints.push(interpolateArray[i]);
-        // log('interpolateArray', interpolateArray, interpolateArray.length);
-    }
-    for (var i = 0; i < arrayPoints.length; i++) {
-        for (var j = 0; j < arrayPoints[i].length; j++) {
-            if (!combined[j]) {
-                combined[j] = new Array;
-            }
-            combined[j].push(arrayPoints[i][j]);
-        }
-    }
-    // new arrays are created for each index
-    for (var i = 0; i < (combined.length); i++) {
-        var bigValues = combined[i];
-        input = knob / maxKnobValue;
-        idx = Math.floor(input * (bigValues.length - 1));
-        frac = (input - (idx) / (bigValues.length - 1)) * (bigValues.length - 1);
-        if (frac == 0) {
-            /* no need to calculate */
-            output = bigValues[idx];
-        } else {
-            output = bigValues[idx] + (bigValues[idx + 1] - bigValues[idx]) * frac;
-        };
-        currentPosition = (output);
-        // log('currentPosition i combined[i] output', i, combined[i], output);
-
-        // DEVICE PATH MANIPULATION
-        var nextDevicePath = removeQuotes(nextDevice.path);
-        var pathArray = nextDevicePath.split(" ");
-        // add param number
-        pathArray.push('parameters', i);
-        //rebuild the string
-        var newPath = pathArray.join(" ");
-        var secondDevice = new LiveAPI(newPath);
-
-        // SET PARAM VALUES
-        log('interpolate =', secondDevice.get('name'));
-        secondDevice.set('value', output);
-        log('output', currentPosition);
-    }
-    // outlet(1, currentPosition);
-}
-
-/////////// SWITCH PRESETS ///////////////
-
-var interpolatePoints = 0;
-
-function switchPresets(upOrDown) {
-    var arrayPoints = [];
-    log(interpolateArray);
-    for (var i = 0; i < interpolateArray.length; i++) {
-        arrayPoints.push(interpolateArray[i]);
-    }
-    var interpolateIndex = arrayPoints.length - 1;
-    if (upOrDown == 1) {
-        interpolatePoints = interpolatePoints + 1;
-        if (interpolatePoints > interpolateIndex) {
-            interpolatePoints = 0;
-        }
-    } else if (upOrDown == 0) {
-        interpolatePoints = interpolatePoints - 1;
-        if (interpolatePoints < 0) {
-            interpolatePoints = arrayPoints.length - 1;
-        }
-    }
-    log(interpolatePoints, arrayPoints[interpolatePoints], interpolatePoints);
-    var currentPosition = arrayPoints[interpolatePoints];
-    log('interpolatePoints - currentPosition', currentPosition);
-
-    for (var i = 0; i < (currentPosition.length); i++) {
-        var nextDevicePath = removeQuotes(nextDevice.path);
-        var pathArray = nextDevicePath.split(" ");
-        // add param number
-        pathArray.push('parameters', i);
-        //rebuild the string
-        var newPath = pathArray.join(" ");
-        var secondDevice = new LiveAPI(newPath);
-
-        log('interpolate =', secondDevice.get('name'));
-        secondDevice.set('value', currentPosition[i]);
-        //	secondDevice.get('name');
-
-        log('output', currentPosition);
-    }
-}
-
 // READ ///////////////////////////////////////////////////////////
 
 function read() {
@@ -306,26 +219,6 @@ function read() {
         post("Error\n");
     }
     UI = JSON.parse(memstr);
-    createInterpolateArray();
-}
-
-function createInterpolateArray() {
-    var objKey = deviceName;
-    //var UIObject = JSON.parse(memstr);
-    if (UI[objKey]) {
-
-        var UIDevice = UI[objKey];
-        if (UI) {
-            interpolateArray = UIDevice;
-            //log('read trackNumber currentClip', trackNumber, currentClip);
-            log('createInterpolateArray() UI=interpolateArray', interpolateArray, 'length', interpolateArray.length);
-            for (i = 0; i < interpolateArray.length; i++) {
-                log('target arrays:', interpolateArray[i], 'length', interpolateArray[i].length, '\n');
-            }
-        }
-    }
-    log('UI in createInterpolateArray function - ', UI);
-    //    UI = eval("(" + memstr + ")"); //much less secure, but could work
 }
 
 // WRITE FUNCTIONS /////////////////////////////////////////////////////
@@ -360,16 +253,6 @@ function anything(input) {
 }
 
 function pushToArray(a) {
-    // push additional anything array
-    /*
-    var a = arrayfromargs(arguments);
-    var id = a[0];
-    var property = a[1];
-    var data = a[2];
-    //var data = a.slice(2);
-    // the .slice method creates a new unnecessary array.
-    post("\nanything", id, ",", property, ",", data);
-    */
     var data = a;
     if (UI == null) {
         UI = new Object();
