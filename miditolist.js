@@ -96,7 +96,6 @@ function redirectMidi(v) {
     }
     // LETTER R
     if (v == "1,3") {
-        q
         var live = new LiveAPI('live_set view selected_track devices 1 parameters 2');
         var value = live.get('value');
         var newVal = value - 10;

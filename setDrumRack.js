@@ -14,12 +14,15 @@ var bankNo = 0;
 var drumChain = 0;
 var drumDevice = 0;
 var paramNum = 1;
+var liveSet;
 
 // init functions
 // changes drumRack number
 function setDrumTrackNo(midiNote) {
+    drumRack = midiNote;
     //if (midiNote > 119) {
-    switch (midiNote) {
+    /*
+switch (midiNote) {
         case 120:
             drumRack = 36;
             break;
@@ -47,7 +50,6 @@ function setDrumTrackNo(midiNote) {
             // Next 8
         case 48:
             drumRack = 48;
-            log('48 was logged');
             break;
         case 50:
             drumRack = 50;
@@ -79,7 +81,9 @@ function setDrumTrackNo(midiNote) {
         case 96:
             drumRack = 96;
             break;
+
     }
+*/
     // }
     log('Selected drumRack, midiNote', midiNote, 'drumRack', drumRack);
 }
@@ -91,92 +95,139 @@ function getParameterValue(paramNum) {
 }
 
 function setDrum(dial, val) {
-    switch (true) {
-        case (dial < 9):
-            bankNo = 0;
-            drumRack = 36;
-            log('dial less than 9', drumRack);
-            break;
-        case (dial < 17):
-            bankNo = 1;
-            drumRack = 37;
-            log('dial less than 17', drumRack);
-            break;
-        case (dial < 25):
-            bankNo = 2;
-            drumRack = 38;
-            break;
-        case (dial < 33):
-            bankNo = 3;
-            drumRack = 39;
-            break;
-        case (dial < 41):
-            bankNo = 4;
-            drumRack = 42;
-            break;
-        case (dial < 49):
-            bankNo = 5;
-            drumRack = 44;
-            break;
-        case (dial < 57):
-            bankNo = 6;
-            drumRack = 46;
-            break;
-        case (dial < 65):
-            bankNo = 7;
-            drumRack = 51;
-            break;
-            // NEXT 8
-        case (dial < 73):
-            bankNo = 8;
-            drumRack = 48;
-            break;
-        case (dial < 81):
-            bankNo = 9;
-            drumRack = 50;
-            break;
-        case (dial < 89):
-            bankNo = 10;
-            drumRack = 60;
-            break;
-        case (dial < 97):
-            bankNo = 11;
-            drumRack = 61;
-            break;
-        case (dial < 105):
-            bankNo = 12;
-            drumRack = 92;
-            break;
-        case (dial < 113):
-            bankNo = 13;
-            drumRack = 93;
-            break;
-        case (dial < 121):
-            bankNo = 14;
-            drumRack = 94;
-            break;
-        case (dial < 129):
-            bankNo = 15;
-            drumRack = 95;
-            break;
-        case (dial < 137):
-            bankNo = 16;
-            drumRack = 47;
-            break;
-        case (dial < 145):
-            bankNo = 17;
-            drumRack = 49;
-            break;
-        case (dial < 153):
-            bankNo = 18;
-            drumRack = 96;
-            break;
-            // LAST 3
+    log('setDrum, dial', dial, val);
+	log('setDrum dial = ', dial);
+    if (dial < 153) {
+        switch (true) {
+            case (dial < 9):
+                bankNo = 0;
+                drumRack = 36;
+                log('dial less than 9', drumRack);
+                break;
+            case (dial < 17):
+                bankNo = 1;
+                drumRack = 37;
+                log('dial less than 17', drumRack);
+                break;
+            case (dial < 25):
+                bankNo = 2;
+                drumRack = 38;
+                break;
+            case (dial < 33):
+                bankNo = 3;
+                drumRack = 39;
+                break;
+            case (dial < 41):
+                bankNo = 4;
+                drumRack = 42;
+                break;
+            case (dial < 49):
+                bankNo = 5;
+                drumRack = 44;
+                break;
+            case (dial < 57):
+                bankNo = 6;
+                drumRack = 46;
+                break;
+            case (dial < 65):
+                bankNo = 7;
+                drumRack = 51;
+                break;
+                // NEXT 8
+            case (dial < 73):
+                bankNo = 8;
+                drumRack = 48;
+                break;
+            case (dial < 81):
+                bankNo = 9;
+                drumRack = 50;
+                break;
+            case (dial < 89):
+                bankNo = 10;
+                drumRack = 60;
+                break;
+            case (dial < 97):
+                bankNo = 11;
+                drumRack = 61;
+                break;
+            case (dial < 105):
+                bankNo = 12;
+                drumRack = 92;
+                break;
+            case (dial < 113):
+                bankNo = 13;
+                drumRack = 93;
+                break;
+            case (dial < 121):
+                bankNo = 14;
+                drumRack = 94;
+                break;
+            case (dial < 129):
+                bankNo = 15;
+                drumRack = 95;
+                break;
+            case (dial < 137):
+                bankNo = 16;
+                drumRack = 47;
+                break;
+            case (dial < 145):
+                bankNo = 17;
+                drumRack = 49;
+                break;
+            case (dial < 153):
+                bankNo = 18;
+                drumRack = 96;
+                break;
+                // LAST 3
 
+        }
+	selectedDevice = 1;
+        liveSet = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' drum_pads ' + drumRack + ' chains ' + drumChain + ' devices ' + drumDevice + ' parameters ' + Number(dial - 8 * bankNo));
+        //log('TEST', (liveSet.path));
+        if (liveSet.path) {
+            //	if(liveSet){
+            liveSet.set('value', val);
+            log('setDrum, liveSet', liveSet, 'drum rack', drumRack, 'name', liveSet.get('name'), 'number', Number(dial - 8 * (bankNo)), 'val', val);
+        }
+    } else if (dial > 152) {
+        switch (true) {
+        case (dial < 161):
+	     bankNo = 19;
+                selectedDevice = 2;
+                break;
+        case (dial < 169):
+	     bankNo = 20;
+                selectedDevice = 3;
+                break;
+
+        }
+        liveSet = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + Number(dial-8*bankNo));
+	var liveSetTest = new LiveAPI('live_set view selected_track devices ' + selectedDevice);
+			      log('setDrum device name', (liveSetTest.path), liveSetTest.get('name'));
+			      log('path..', liveSet.path);
+        if (liveSet.path) {
+            //	if(liveSet){
+            liveSet.set('value', val);
+            log('setDrum, liveSet', liveSet, 'name', liveSet.get('name'), 'val', val);
+
+        }
     }
-    liveSet = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' drum_pads ' + drumRack + ' chains ' + drumChain + ' devices ' + drumDevice + ' parameters ' + Number(dial - 8 * bankNo));
-    liveSet.set('value', val);
-    log('dial and val', drumRack, liveSet.get('name'), Number(dial - 8 * (bankNo)), val);
+}
+
+function setDrumkitEffects(dial, val) {
+    if (dial > 152) {
+        switch (true) {
+            case (dial < 161):
+                bankNo = 19;
+                //            drumRack = 96;
+                break;
+        }
+        liveSet = new LiveAPI('live_set view selected_track devices 2 parameters ' + Number(dial - 8 * bankNo));
+        if (Object.keys(liveSet).length != 0) {
+            liveSet.set('value', val);
+            log('setDrum, liveSet', liveSet, 'drum rack', drumRack, 'name', liveSet.get('name'), 'number', Number(dial - 8 * (bankNo)), 'val', val);
+        }
+    }
 }
 
 // LOGGING -------------------------------------------------------------------------------//

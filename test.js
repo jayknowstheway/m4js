@@ -1,4 +1,5 @@
 outlets = 2;
+var liveSet;
 
 function setDial(val) {
     liveSet = new LiveAPI('live_set view selected_track devices 1 chains 0 devices 0 parameters 1');
@@ -73,6 +74,7 @@ console = {
     log: log
 };
 
+log('___________________________________');
 // CALLBACKS -----------------------------------------------------------------------------//
 
 function callback() {}
