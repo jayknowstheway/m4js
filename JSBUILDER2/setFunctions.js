@@ -7,9 +7,11 @@ var postEnabled = 1;
 
 var currentBPM;
 var sessionRecordStatus = 0;
+var currentGroove;
 
 var track = new LiveAPI(callback, "live_set view selected_track");
 var trackNumber;
+var selectedTrack = track;
 var trackChangeInit = 0;
 
 var clip = new LiveAPI(callback, "live_set tracks " + trackNumber + " clip_slots " + currentClip + " clip");
@@ -38,11 +40,20 @@ var paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + sel
 
 var params;
 var paramCount;
-var paramsTotal = 64;
+var paramsTotal = 128;
 var numOfParams;
 var paramStr = "";
 var arrayOfParamValues = "";
 var arrayOfParamValuesLength = arrayOfParamValues.length;
+
+// DRUM VARS //
+// Note: The drum section includes 19 drums. Banks are chosen based on the sysex message for each key. The drum rack number is defined for the Drum Rack amxd, and the associated 16perDrumRack.js file.
+var drumRack = 0;
+var bankNo = 0;
+var drumChain = 0;
+var drumDevice = 0;
+
+var vSoloTrackToggle = 0;
 
 var bank = 0;
 var bankParam = 0;
@@ -59,6 +70,7 @@ var midi0;
 // INLET FUNCTIONS -----------------------------------------------------------------------//
 
 //SYS ////////////////////////////////// SYS //
+// This section takes in midi and sysex messages and formats them. Sysex and Midi messages are then redirected to their processing functions.
 
 
 function sysBang() {
@@ -79,7 +91,7 @@ function msg_int(v) {
         case 247:
             outlet(1, message);
             //post('msg_int case 247 message: ', message, '\n');
-            // REDIRECT MIDI!!
+            // REDIRECT MIDI
             redirectMidi(message);
             //
             sysex_i = 0;
@@ -134,9 +146,68 @@ function msg_int(v) {
 }
 
 // REDIRECT MIDI //////////////////////////////////////////////////////////////////////////
+// Sysex messages are received and assigned to functions.
 
 function redirectMidi(v) {
     post('redirectMidi, input = ', v);
+
+    ////////// SYS 00 -- LETTERS ////////////
+    // LETTER Q
+    if (v == "0,0") {
+        var api = new LiveAPI('live_set');
+        api.call('start_playing');
+    }
+    // LETTER W
+    if (v == "0,1") {}
+    // LETTER E
+    if (v == "0,2") {}
+    // LETTER R
+    if (v == "0,3") {}
+    // LETTER T
+    if (v == "0,4") {}
+    // LETTER Y
+    if (v == "0,5") {}
+    // LETTER U
+    if (v == "0,6") {}
+    // LETTER I
+    if (v == "0,7") {}
+    // LETTER O
+    if (v == "0,8") {}
+    // LETTER P
+    if (v == "0,9") {}
+    // LETTER A
+    if (v == "0,10") {}
+    // LETTER S
+    if (v == "0,11") {}
+    // LETTER D
+    if (v == "0,12") {}
+    // LETTER F
+    if (v == "0,13") {}
+    // LETTER G
+    if (v == "0,14") {}
+    // LETTER H
+    if (v == "0,15") {}
+    // LETTER J
+    if (v == "0,16") {}
+    // LETTER K
+    if (v == "0,17") {}
+    // LETTER L
+    if (v == "0,18") {}
+    // LETTER Z
+    if (v == "0,19") {}
+    // LETTER X
+    if (v == "0,20") {}
+    // LETTER C
+    if (v == "0,21") {}
+    // LETTER V
+    if (v == "0,22") {}
+    // LETTER B
+    if (v == "0,23") {}
+    // LETTER N
+    if (v == "0,24") {}
+    // LETTER M
+    if (v == "0,25") {}
+
 
     ////////// SYS 01 -- coc  ctrl opt comm LETTERS ////////////    
     // LETTER Q
@@ -234,6 +305,15 @@ function redirectMidi(v) {
         dialChange("defaultNum");
     }
 
+    // c ; // SET CLIP LENGTH /2 -- ctrl ;
+    if (v == "0,10") {
+        setClipLength(-1);
+    }
+    // c ' // SET CLIP LENGTH x2 -- ctrl '
+    if (v == "0,10") {
+        setClipLength(1);
+    }
+
     ////////// SYS 02 -- sco LETTERS ////////////
     // LETTER Q
     if (v == "2,0") {}
@@ -288,14 +368,17 @@ function redirectMidi(v) {
     // LETTER M
     if (v == "2,25") {}
 
-    ////////// SYS 03 -- sc LETTERS ////////////
+    ////////// SYS 03 -- LETTERS ////////////
     // LETTER Q
     if (v == "3,0") {
         bank = 0;
+        drumRack = 36;
+
     }
     // LETTER W
     if (v == "3,1") {
         bank = 1;
+        drumRack = 37;
     }
     // LETTER E
     if (v == "3,2") {
@@ -323,11 +406,11 @@ function redirectMidi(v) {
     }
     // LETTER O
     if (v == "3,8") {
-        bank = 0;
+        bank = 12;
     }
     // LETTER P
     if (v == "3,9") {
-        bank = 0;
+        bank = 13;
     }
     // LETTER A
     if (v == "3,10") {
@@ -347,23 +430,23 @@ function redirectMidi(v) {
     }
     // LETTER G
     if (v == "3,14") {
-        bank = 12;
+        bank = 14;
     }
     // LETTER H
     if (v == "3,15") {
-        bank = 13;
+        bank = 15;
     }
     // LETTER J
     if (v == "3,16") {
-        bank = 14;
+        bank = 16;
     }
     // LETTER K
     if (v == "3,17") {
-        bank = 15;
+        bank = 17;
     }
     // LETTER L
     if (v == "3,18") {
-        bank = 0;
+        bank = 18;
     }
     // LETTER Z
     if (v == "3,19") {
@@ -375,7 +458,8 @@ function redirectMidi(v) {
     }
     // LETTER C
     if (v == "3,21") {
-        bank = 0;
+        //bank = 0;
+	randomizeSingleBank();
     }
     // LETTER V
     if (v == "3,22") {
@@ -394,6 +478,99 @@ function redirectMidi(v) {
         bank = 0;
     }
 
+    ////////// SYS 02 -- scoc LETTERS ////////////
+    // LETTER Q
+    if (v == "7,0") {
+	// TEST //
+	liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots 0 clip');
+	liveSet.call('fire');
+    }
+    // LETTER W
+    if (v == "7,1") {
+    	// TEST //
+	liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots 1 clip');
+	liveSet.call('fire');}
+    // LETTER E
+    if (v == "7,2") {}
+    // LETTER R
+    if (v == "7,3") {}
+    // LETTER T
+    if (v == "7,4") {}
+    // LETTER Y
+    if (v == "7,5") {}
+    // LETTER U
+    if (v == "7,6") {}
+    // LETTER I
+    if (v == "7,7") {}
+    // LETTER O // SWING
+    if (v == "7,8") {
+        liveSet = new LiveAPI('live_set');
+        currentGroove = (liveSet.get('swing_amount')) * 127;
+        post('\ncurrentGroove', currentGroove);
+        currentGroove = ((currentGroove * 1) + 10);
+        if (currentGroove > 120) {
+            currentGroove = 110;
+        }
+        liveSet.set('swing_amount', parseFloat(currentGroove / 127));
+        post((liveSet.get('swing_amount')));
+        //
+        liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
+        if (liveSet) {
+            post(liveSet.path);
+            liveSet.call('quantize', 5, 1.0);
+        }
+
+    }
+    // LETTER P
+    if (v == "7,9") {swingAmount(0.0);}
+    // LETTER A
+    if (v == "7,10") {}
+    // LETTER S
+    if (v == "7,11") {}
+    // LETTER D
+    if (v == "7,12") {}
+    // LETTER F
+    if (v == "7,13") {}
+    // LETTER G
+    if (v == "7,14") {}
+    // LETTER H
+    if (v == "7,15") {}
+    // LETTER J
+    if (v == "7,16") {}
+    // LETTER K
+    if (v == "7,17") {}
+    // LETTER L // SWING
+    if (v == "7,18") {
+        liveSet = new LiveAPI('live_set');
+        currentGroove = (liveSet.get('swing_amount')) * 127;
+        post('\ncurrentGroove', currentGroove);
+        currentGroove = (currentGroove * 1 - 10);
+        if (currentGroove < 0) {
+            currentGroove = 0.0;
+        }
+        liveSet.set('swing_amount', parseFloat(currentGroove / 127));
+        post((liveSet.get('swing_amount')));
+        //
+        liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
+        if (liveSet) {
+            liveSet.call('quantize', 5, 1.0);
+        }
+    }
+    // LETTER Z
+    if (v == "7,19") {}
+    // LETTER X
+    if (v == "7,20") {}
+    // LETTER C
+    if (v == "7,21") {}
+    // LETTER V
+    if (v == "7,22") {}
+    // LETTER B
+    if (v == "7,23") {}
+    // LETTER N
+    if (v == "7,24") {}
+    // LETTER M
+    if (v == "7,25") {}
+
     ////////// SYS 04 -- GLOBALS ////////////
     // CHAR [
     if (v == "4,0") {
@@ -407,15 +584,26 @@ function redirectMidi(v) {
     }
     // CHAR , STOP
     if (v == "4,2") {
-                var liveSet = new LiveAPI("live_set");
-                liveSet.call("stop_playing");
-                post('stop');
+        var liveSet = new LiveAPI("live_set");
+        liveSet.call("stop_playing");
+        post('stop');
     }
-        // CHAR . PLAY
+    // CHAR . PLAY
     if (v == "4,3") {
-                var liveSet = new LiveAPI("live_set");
-                liveSet.call("start_playing");
-                post('play');
+        var liveSet = new LiveAPI("live_set");
+        liveSet.call("start_playing");
+        post('play');
+    }
+    // CHAR ` SREC
+    if (v == "4,4") {
+        var liveSet = new LiveAPI("live_set");
+        if (sessionRecordStatus == 0) {
+            liveSet.set('session_record', 1);
+            sessionRecordStatus = 1;
+        } else {
+            liveSet.set('session_record', 0);
+            sessionRecordStatus = 0;
+        }
     }
 
     ////////// SYS 05 -- s LETTERS ////////////
@@ -504,6 +692,235 @@ function redirectMidi(v) {
     // LETTER M
     if (v == "5,25") {}
 
+    ////////// SYS 06 -- sco NUMBERS ////////////
+    // NUMBER TILDE // NO QUANTIZATION
+    if (v == "6,0") {
+        var liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 0);
+        post('setFunctions - Record Quantization: No Quantization');
+
+    }
+    // NUMBER 1  // RECORD QUANT 1 - QUARTER-NOTE
+    if (v == "6,1") {
+        var liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 1);
+        post('setFunctions - Record Quantization: Quarter-Note Quantization');
+    }
+    // NUMBER 2   // RECORD QUANT 2 - EIGHTH-NOTE
+    if (v == "6,2") {
+        var liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 2);
+        post('setFunctions - Record Quantization: Eight-Note Quantization');
+    }
+    // NUMBER 3   // RECORD QUANT 3 - EIGHTH-NOTE TRIPLET
+    if (v == "6,3") {
+        var liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 3);
+        post('setFunctions - Record Quantization: Eight-Note TRIPLET Quantization');
+    }
+    // NUMBER 4   // RECORD QUANT 4 - SIXTEENTH-NOTE
+    if (v == "6,4") {
+        var liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 5);
+        post('setFunctions - Record Quantization: Sixteenth-Note Quantization');
+    }
+    // NUMBER 5   // RECORD QUANT 5 - THIRTY-SECOND-NOTE
+    if (v == "6,5") {
+        liveSet = new LiveAPI("live_set");
+        liveSet.set("midi_recording_quantization", 8);
+        post('setFunctions - Record Quantization: Thirty-Second Note Quantization');
+    }
+    // NUMBER 6
+    if (v == "6,6") {}
+    // NUMBER 7
+    if (v == "6,7") {}
+    // NUMBER 8
+    if (v == "6,8") {}
+    // NUMBER 9
+    if (v == "6,9") {}
+
+    ////////// SYS 08 -- scoc NUMBERS ////////////
+    // c 0
+    if (v == "8,0") {}
+    // c 1
+    if (v == "8,1") {}
+    // c 2
+    if (v == "8,2") {}
+    // c 3
+    if (v == "8,3") {}
+    // c 4
+    if (v == "8,4") {}
+    // c 5
+    if (v == "8,5") {}
+    // c 6
+    if (v == "8,6") {}
+    // c 7
+    if (v == "8,7") {}
+    // c 8
+    if (v == "8,8") {}
+    // c 9
+    if (v == "8,9") {
+        // JUST QUANTIZE CLIP SWING
+        liveSet = new LiveAPI('live_set');
+        currentGroove = (liveSet.get('swing_amount')) * 127;
+        post('\ncurrentGroove', currentGroove);
+        currentGroove = ((currentGroove * 1));
+        if (currentGroove > 120) {
+            currentGroove = 110;
+        }
+        liveSet.set('swing_amount', parseFloat(currentGroove / 127));
+        post((liveSet.get('swing_amount')));
+        //
+        liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + ' clip');
+        if (liveSet) {
+            post(liveSet.path);
+            liveSet.call('quantize', 5, 1.0);
+        }
+
+    }
+
+    ////////// SYS 09 -- sc LETTERS ////////////
+    // LETTER Q
+    if (v == "9,0") {
+        dialChange2(1, 1);
+    }
+    // LETTER W
+    if (v == "9,1") {
+        dialChange2(1, 2);
+    }
+    // LETTER E
+    if (v == "9,2") {
+        dialChange2(1, 3);
+    }
+    // LETTER R
+    if (v == "9,3") {
+        dialChange2(1, 4);
+    }
+    // LETTER T
+    if (v == "9,4") {
+        dialChange2(1, 5);
+    }
+    // LETTER Y
+    if (v == "9,5") {
+        dialChange2(1, 6);
+    }
+    // LETTER U
+    if (v == "9,6") {
+        dialChange2(1, 7);
+    }
+    // LETTER I
+    if (v == "9,7") {
+        dialChange2(1, 8);
+    }
+    // LETTER O
+    if (v == "9,8") {}
+    // LETTER P
+    if (v == "9,9") {}
+    // LETTER A
+    if (v == "9,10") {
+        dialChange2(0, 1);
+    }
+    // LETTER S
+    if (v == "9,11") {
+        //dialChange2(0, 2);
+	var vSoloTrack = new LiveAPI('live_set tracks 10');
+	if (vSoloTrackToggle == 0){
+            vSoloTrack.set('solo', 1);
+	    vSoloTrackToggle = 1;
+	} else {
+	    vSoloTrackToggle = 0;
+            vSoloTrack.set('solo', 0);
+	}
+    }
+    // LETTER D
+    if (v == "9,12") {
+        dialChange2(0, 3);
+    }
+    // LETTER F
+    if (v == "9,13") {
+        dialChange2(0, 4);
+    }
+    // LETTER G
+    if (v == "9,14") {
+        dialChange2(0, 5);
+    }
+    // LETTER H
+    if (v == "9,15") {
+        dialChange2(0, 6);
+    }
+    // LETTER J
+    if (v == "9,16") {
+        dialChange2(0, 7);
+    }
+    // LETTER K
+    if (v == "9,17") {
+        dialChange2(0, 8);
+    }
+    // LETTER L
+    if (v == "9,18") {}
+    // LETTER Z
+    if (v == "9,19") {
+
+        // Set Arrangement Loop Start/End
+        //liveSet = new LiveAPI('live_set');
+        //liveSet.set('loop_start', 4*22.0);
+        //liveSet.set('loop_length', 4);
+        //liveSet.set('loop', 1);
+        //liveSet.set('back_to_arranger', 1);
+        //liveSet.call('set_or_delete_cue');
+        //	var cuePoints = new LiveAPI('live_set cue_points 0');
+        //cuePoints.call('jump');
+        //liveSet.call('scrub_by', 20.0);
+        //SOLO DRUM CHAIN
+        liveSet = new LiveAPI('live_set');
+        drumChain = 0;
+        drumDevice = 0;
+        var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 0');
+        drumOne.set('solo', 1);
+        var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 1');
+        drumOne.set('solo', 0);
+    }
+    // LETTER X
+    if (v == "9,20") {
+        //SOLO DRUM CHAIN
+        liveSet = new LiveAPI('live_set');
+        drumChain = 0;
+        drumDevice = 0;
+        var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 1');
+        drumOne.set('solo', 1);
+        var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 0');
+        drumOne.set('solo', 0);
+
+        // LOGGING ONTO CLIP NAME
+        var vClip = new LiveAPI('live_set tracks 1 clip_slots 0 clip');
+        vClip.set('name', drumChain);
+
+        ////////
+
+
+    }
+    // LETTER C
+    if (v == "9,21") {
+        liveSet = new LiveAPI('live_set');
+        drumChain = 0;
+        drumDevice = 0;
+        var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 0');
+        //		var drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads 36 chains 0 devices 0 chains 1');
+        drumOne.set('solo', 0);
+        drumOne = new LiveAPI('live_set tracks 0 devices 1 drum_pads ' + drumRack + ' chains 0 devices 0 chains 1');
+        drumOne.set('solo', 0);
+
+    }
+    // LETTER V
+    if (v == "9,22") {}
+    // LETTER B
+    if (v == "9,23") {}
+    // LETTER N
+    if (v == "9,24") {}
+    // LETTER M
+    if (v == "9,25") {}
+
+
     /////// FINAL COMMANDS ////////
     post('\nsysex in, bank', bank);
     // END OF MIDI FUNCTION
@@ -522,16 +939,7 @@ function midiIn(input) {
                 break;
             case 2:
                 break;
-            case 11: // SREC -- tilde
-                var liveSet = new LiveAPI("live_set");
-                if (sessionRecordStatus == 0) {
-                    liveSet.set('session_record', 1);
-                    sessionRecordStatus = 1;
-                } else {
-                    liveSet.set('session_record', 0);
-                    sessionRecordStatus = 0;
-                }
-                post('sRec');
+            case 11:
                 break;
             case 12: // BPM -- ctrl -
                 var liveSet = new LiveAPI("live_set");
@@ -558,7 +966,7 @@ function midiIn(input) {
                 post(currentBPM);
                 break;
             case 22: // RANDOMIZE Single Bank - c
-                randomizeSingleBank();
+               // randomizeSingleBank();
                 break;
             case 23: // RANDOMIZE PARAMS - v
                 randomizeParams();
@@ -637,13 +1045,10 @@ function midiIn(input) {
                 break;
             case 60: //
                 break;
-            case 80: // SET CLIP LENGTH /2 -- ctrl ;
-                setClipLength(-1);
+            case 80:
                 break;
-            case 81: // SET CLIP LENGTH x2 -- ctrl '
-                setClipLength(1);
+            case 81:
                 break;
-
             case 83: // READ PREVIOUS PARAMS -- ctrl ,
                 crud(2);
                 break;
@@ -653,36 +1058,17 @@ function midiIn(input) {
             case 85: // READ TEMP -- shift ctrl option ,
                 readTemp();
                 break;
-
-            case 90: // RECORD QUANT -- shift ctrl option `
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 0);
-                post('setFunctions - Record Quantization: No Quantization');
+            case 90:
                 break;
-            case 91: // RECORD QUANT -- shift ctrl option 1
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 1);
-                post('setFunctions - Record Quantization: Quarter-Note Quantization');
+            case 91:
                 break;
-            case 92: // RECORD QUANT -- shift ctrl option 2
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 2);
-                post('setFunctions - Record Quantization: Eight-Note Quantization');
+            case 92:
                 break;
-            case 93: // RECORD QUANT -- shift ctrl option 3
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 3);
-                post('setFunctions - Record Quantization: Eight-Note TRIPLET Quantization');
+            case 93:
                 break;
-            case 94: // RECORD QUANT -- shift ctrl option 4
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 5);
-                post('setFunctions - Record Quantization: Sixteenth-Note Quantization');
+            case 94:
                 break;
-            case 95: // RECORD QUANT -- shift ctrl option 5
-                var liveSet = new LiveAPI("live_set");
-                liveSet.set("midi_recording_quantization", 8);
-                post('setFunctions - Record Quantization: Thirty-Second Note Quantization');
+            case 95:
                 break;
             case 98: // WRITE TEMP -- shift ctrl option comm '
                 writeTemp();
@@ -794,6 +1180,75 @@ function dialChange(upDown, staticParam) {
     }
 }
 
+function dialChange2(upDown, staticParam) {
+    var chosenParamTemp;
+    var paramValue;
+    // code to accept two arguments
+    if (arguments[1]) {
+        chosenParamTemp = staticParam;
+    } else {
+        chosenParamTemp = chosenParam;
+    }
+    //    
+    switch (upDown) {
+        case 0:
+            paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+            paramValue = Number(paramPath.get('value')) - 1;
+            //if (paramValue < 0 && (chosenParamTemp == 1 || chosenParamTemp == 5)) {
+            //    paramValue = 127;
+            //}
+            paramPath.set('value', paramValue);
+            post('dialChange DOWN, paramValue', paramValue);
+            break;
+        case 1:
+            paramPath = new LiveAPI('live_set tracks ' + trackNumber + ' devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+            paramValue = Number(paramPath.get('value')) + 1;
+            //if (paramValue > 127 && (chosenParamTemp == 1 || chosenParamTemp == 5)) {
+            //    paramValue = 0;
+            //}
+            paramPath.set('value', paramValue);
+            break;
+        case "defaultNum":
+            switch (chosenParamTemp) {
+                case 1:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 2:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 3:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 4:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 5:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 6:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 7:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+                case 8:
+                    paramPath = new LiveAPI('live_set view selected_track devices ' + selectedDevice + ' parameters ' + ((8 + bank) * 8 + chosenParamTemp));
+                    paramPath.set('value', 64);
+                    break;
+            }
+
+            //
+            post('dialChange UP, paramValue and bank*8+chosenParam', paramValue, (8 + bank) * 8 + chosenParamTemp);
+    }
+}
+
 // MUST REVISE WITH SYSEX! //////                                         !!!!!!!!
 function getSelectedBank(midiNote) {
     trackChangeInit = 1;
@@ -831,7 +1286,6 @@ function getSelectedBank(midiNote) {
                 //  if (trackNumber == 0) {
                 //      switch (midiNote) {
             case 48:
-                post('48 was postged222');
                 bank = 8;
                 break;
             case 50:
@@ -926,7 +1380,7 @@ function swingAmount(dial) {
     var liveSet = new LiveAPI("live_set");
     if (liveSet) {
         liveSet.set('swing_amount', grooveLevel);
-        var currentGroove = liveSet.get('swing_amount');
+        currentGroove = liveSet.get('swing_amount');
         post('grooveAmount, currentGroove = ', currentGroove);
         liveSet = new LiveAPI('live_set tracks ' + trackNumber + ' clip_slots ' + currentClip + " clip");
         if (liveSet)
